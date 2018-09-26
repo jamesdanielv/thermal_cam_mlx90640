@@ -8,3 +8,9 @@ at start up it calibrates to heat levels, and then anything above the heat level
 example showing it is is here:
 https://youtu.be/r1J1AwunTps
 
+
+MLX906040_example32ataTime.zip 
+shows how to access status registers and memory page info, also as long as you only read sensor after enough time for mode has passed (2hz) means at least 500ms per page, then data will be available for both pages in ram,
+also there is a single shot mode, which i will talke advantage of that fills all ram, 2 passes and then allows you to read it even 1 byte at a time.
+
+
