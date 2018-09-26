@@ -14,3 +14,4 @@ shows how to access status registers and memory page info, also as long as you o
 also there is a single shot mode, which i will talke advantage of that fills all ram, 2 passes and then allows you to read it even 1 byte at a time.
 
 
+fullsensorreadToterminal.zip reads entire sensor to screen, as a dot and dash to see sensor data.all of it. 
