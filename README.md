@@ -1,5 +1,5 @@
 # thermal_cam_mlx90640
-same as thermal cam project but with mlx90640 sensor
+same as thermal cam project but with mlx90640 sensor. the idea is to get it working on arduino? why would i want to do that? it lowers the cost for trying out and testing devices, and allows more power and room for upgrade performance.
 these sensors work differently and have different resolution, so process is different in many areas
 one of the things that is different is paging of data and built in ram locations.
 i have here an example that reads the first bank of 16 sensors.
