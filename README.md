@@ -15,3 +15,5 @@ also there is a single shot mode, which i will talke advantage of that fills all
 
 
 fullsensorreadToterminal.zip reads entire sensor to screen, as a dot and dash to see sensor data.all of it. 
+
+what will be needed going foward is the files that dump the calibration data from the mlx90460 sensor. this data will be used and stored in progmem (system flash) to save ram, and increase speed as we only need to read i2c buss for temp data mostly.
