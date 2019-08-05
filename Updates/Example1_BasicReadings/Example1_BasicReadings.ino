@@ -30,7 +30,7 @@
 */
 
 #include <Wire.h>
-
+#include "factoryCalData.h"
 #include "MLX90640_API.h"
 #include "MLX90640_I2C_Driver.h"
 
