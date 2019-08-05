@@ -1,3 +1,7 @@
+code in this folder will start to require the file factoryCalData.h, you will want to run a program included in folder called 
+'getEEpromDump' extract it and with sensor functional pull out the data from the thermal sensor. this data needs to be cut and past from serial output and put in brackets of factoryCalData.h
+
+
 This is for updates while testing and verifying sensor. 
 i am uploading a movie of sensor showing my hand count to five. 
 this is the same output you would see if you upload the files in this folder
