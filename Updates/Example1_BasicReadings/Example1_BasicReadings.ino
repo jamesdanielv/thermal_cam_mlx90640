@@ -1,6 +1,6 @@
 /*code modified by james villeneve to show in monitor on screen serial output an image of data 768 sensors
- * 
- * 
+ * also will be modifing code to use new routines that use less memory, and add in a init routine to verify
+ * that flash and thermopile data cal are the same. 
  * 
   Read the temperature pixels from the MLX90640 IR array
   By: Nathan Seidle
