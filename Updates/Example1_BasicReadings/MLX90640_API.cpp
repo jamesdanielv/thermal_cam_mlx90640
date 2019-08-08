@@ -14,11 +14,12 @@
  * limitations under the License.
  *
  */
+ #include "MLX90640_SimpleDrivers.h" //james villeneuve added
 #include "MLX90640_I2C_Driver.h"
 #include "MLX90640_API.h"
 #include <math.h>
 
-void ExtractVDDParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
+void ExtractVDDParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);//we are removing the need for this
 void ExtractPTATParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 void ExtractGainParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 void ExtractTgcParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
@@ -26,15 +27,35 @@ void ExtractResolutionParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 void ExtractKsTaParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 void ExtractKsToParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 void ExtractAlphaParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
-void ExtractOffsetParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
+void ExtractOffsetParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);//we no longer need this as this is done real time now
 void ExtractKtaPixelParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 void ExtractKvPixelParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 void ExtractCPParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 void ExtractCILCParameters(uint16_t *eeData, paramsMLX90640 *mlx90640);
 int ExtractDeviatingPixels(uint16_t *eeData, paramsMLX90640 *mlx90640);
 int CheckAdjacentPixels(uint16_t pix1, uint16_t pix2);
-int CheckEEPROMValid(uint16_t *eeData);  
+int CheckEEPROMValid(uint16_t *eeData);
 
+//---------------- simple set
+//**************************************************************************************
+#if NEW_METHOD == true   
+int offsetRomCalcValue(uint16t value){
+ // uint8_t Rowxxxx= Pixel_Number>>5;//was upper 5 bits
+ //  uint8_t columnxxxx=column-(Row<<5);//this should give us colum
+ //we need to convert pixel_number into row and colums fast 
+ //int occRow[24];
+  //  int occColumn[32];5bits each, lower 5 bits
+ // int colum=value &
+ //Mrow=Rowxxxx;
+ //Mcol=Columnxxxx;
+return  1;
+
+
+  
+}
+#endif
+
+//------------- old calcs
   
 int MLX90640_DumpEE(uint8_t slaveAddr, uint16_t *eeData)
 {
@@ -114,7 +135,7 @@ int MLX90640_ExtractParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
         ExtractKsTaParameters(eeData, mlx90640);
         ExtractKsToParameters(eeData, mlx90640);
         ExtractAlphaParameters(eeData, mlx90640);
-        ExtractOffsetParameters(eeData, mlx90640);
+       ExtractOffsetParameters(eeData, mlx90640);//not needed. and full test at bootup
         ExtractKtaPixelParameters(eeData, mlx90640);
         ExtractKvPixelParameters(eeData, mlx90640);
         ExtractCPParameters(eeData, mlx90640);
@@ -350,8 +371,14 @@ void MLX90640_CalculateTo(uint16_t *frameData, const paramsMLX90640 *params, flo
                 irData = irData - 65536;
             }
             irData = irData * gain;
-            
+#if NEW_METHOD !=true  
             irData = irData - params->offset[pixelNumber]*(1 + params->kta[pixelNumber]*(ta - 25))*(1 + params->kv[pixelNumber]*(vdd - 3.3));
+#endif
+#if NEW_METHOD ==true
+           irData = irData -  1*(1 + params->kta[pixelNumber]*(ta - 25))*(1 + params->kv[pixelNumber]*(vdd - 3.3));
+#endif
+
+            
             if(mode !=  params->calibrationModeEE)
             {
               irData = irData + params->ilChessC[2] * (2 * ilPattern - 1) - params->ilChessC[1] * conversionPattern; 
@@ -364,8 +391,8 @@ void MLX90640_CalculateTo(uint16_t *frameData, const paramsMLX90640 *params, flo
             alphaCompensated = (params->alpha[pixelNumber] - params->tgc * params->cpAlpha[subPage])*(1 + params->KsTa * (ta - 25));
             
             Sx = pow((double)alphaCompensated, (double)3) * (irData + alphaCompensated * taTr);
-            Sx = sqrt(sqrt(Sx)) * params->ksTo[1];
-            
+          //  Sx = sqrt(sqrt(Sx))       * params->ksTo[1];
+            Sx = sqrt((Sx))       * params->ksTo[1];
             To = sqrt(sqrt(irData/(alphaCompensated * (1 - params->ksTo[1] * 273.15) + Sx) + taTr)) - 273.15;
                     
             if(To < params->ct[1])
@@ -470,7 +497,7 @@ void MLX90640_GetImage(uint16_t *frameData, const paramsMLX90640 *params, float 
             }
             irData = irData * gain;
             
-            irData = irData - params->offset[pixelNumber]*(1 + params->kta[pixelNumber]*(ta - 25))*(1 + params->kv[pixelNumber]*(vdd - 3.3));
+            irData = irData - 1111*(1 + params->kta[pixelNumber]*(ta - 25))*(1 + params->kv[pixelNumber]*(vdd - 3.3));
             if(mode !=  params->calibrationModeEE)
             {
               irData = irData + params->ilChessC[2] * (2 * ilPattern - 1) - params->ilChessC[1] * conversionPattern; 
@@ -546,29 +573,6 @@ int MLX90640_GetSubPageNumber(uint16_t *frameData)
 
 }    
 
-//------------------------------------------------------------------------------
-
-void ExtractVDDParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
-{
-    int16_t kVdd;
-    int16_t vdd25;
-    
-    kVdd = eeData[51];
-    
-    kVdd = (eeData[51] & 0xFF00) >> 8;
-    if(kVdd > 127)
-    {
-        kVdd = kVdd - 256;
-    }
-    kVdd = 32 * kVdd;
-    vdd25 = eeData[51] & 0x00FF;
-    vdd25 = ((vdd25 - 256) << 5) - 8192;
-    
-    mlx90640->kVdd = kVdd;
-    mlx90640->vdd25 = vdd25; 
-}
-
-//------------------------------------------------------------------------------
 
 void ExtractPTATParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
 {
@@ -764,6 +768,7 @@ void ExtractAlphaParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
 }
 
 //------------------------------------------------------------------------------
+#if NEW_METHOD !=true   
 
 void ExtractOffsetParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
 {
@@ -835,6 +840,80 @@ void ExtractOffsetParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
     }
 }
 
+#endif
+#if NEW_METHOD ==true   
+
+void ExtractOffsetParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
+{
+    int occRow[24];
+    int occColumn[32];
+    int p = 0;
+    int16_t offsetRef;
+    uint8_t occRowScale;
+    uint8_t occColumnScale;
+    uint8_t occRemScale;
+    
+
+    occRemScale = (eeData[16] & 0x000F);
+    occColumnScale = (eeData[16] & 0x00F0) >> 4;
+    occRowScale = (eeData[16] & 0x0F00) >> 8;
+    offsetRef = eeData[17];
+    if (offsetRef > 32767)
+    {
+        offsetRef = offsetRef - 65536;
+    }
+    
+    for(int i = 0; i < 6; i++)
+    {
+        p = i * 4;
+        occRow[p + 0] = (eeData[18 + i] & 0x000F);
+        occRow[p + 1] = (eeData[18 + i] & 0x00F0) >> 4;
+        occRow[p + 2] = (eeData[18 + i] & 0x0F00) >> 8;
+        occRow[p + 3] = (eeData[18 + i] & 0xF000) >> 12;
+    }
+    
+    for(int i = 0; i < 24; i++)
+    {
+        if (occRow[i] > 7)
+        {
+            occRow[i] = occRow[i] - 16;
+        }
+    }
+    
+    for(int i = 0; i < 8; i++)
+    {
+        p = i * 4;
+        occColumn[p + 0] = (eeData[24 + i] & 0x000F);
+        occColumn[p + 1] = (eeData[24 + i] & 0x00F0) >> 4;
+        occColumn[p + 2] = (eeData[24 + i] & 0x0F00) >> 8;
+        occColumn[p + 3] = (eeData[24 + i] & 0xF000) >> 12;
+    }
+    
+    for(int i = 0; i < 32; i ++)
+    {
+        if (occColumn[i] > 7)
+        {
+            occColumn[i] = occColumn[i] - 16;
+        }
+    }
+
+    for(int i = 0; i < 24; i++)
+    {
+        for(int j = 0; j < 32; j ++)
+        {  /*
+            p = 32 * i +j;
+            mlx90640->offset[p] = (eeData[64 + p] & 0xFC00) >> 10;
+            if (mlx90640->offset[p] > 31)
+            {
+                mlx90640->offset[p] = mlx90640->offset[p] - 64;
+            }
+            mlx90640->offset[p] = mlx90640->offset[p]*(1 << occRemScale);
+            mlx90640->offset[p] = (offsetRef + (occRow[i] << occRowScale) + (occColumn[j] << occColumnScale) + mlx90640->offset[p]);
+            */
+        }
+    }
+
+#endif
 //------------------------------------------------------------------------------
 
 void ExtractKtaPixelParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
@@ -1055,7 +1134,25 @@ void ExtractCILCParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
 }
 
 //------------------------------------------------------------------------------
-
+void ExtractVDDParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
+{
+    int16_t kVdd;
+    int16_t vdd25;
+    
+    kVdd = eeData[51];
+    
+    kVdd = (eeData[51] & 0xFF00) >> 8;
+    if(kVdd > 127)
+    {
+        kVdd = kVdd - 256;
+    }
+    kVdd = 32 * kVdd;
+    vdd25 = eeData[51] & 0x00FF;
+    vdd25 = ((vdd25 - 256) << 5) - 8192;
+    
+    mlx90640->kVdd = kVdd;
+    mlx90640->vdd25 = vdd25; 
+}
 int ExtractDeviatingPixels(uint16_t *eeData, paramsMLX90640 *mlx90640)
 {
     uint16_t pixCnt = 0;
@@ -1181,3 +1278,5 @@ int ExtractDeviatingPixels(uint16_t *eeData, paramsMLX90640 *mlx90640)
      
      return -7;    
  }        
+
+ 
