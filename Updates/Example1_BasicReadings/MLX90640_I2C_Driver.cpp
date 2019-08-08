@@ -27,6 +27,20 @@ void MLX90640_I2CInit()
 
 //Read a number of words from startAddress. Store into Data array.
 //Returns 0 if successful, -1 if error
+
+
+
+
+
+
+//Set I2C Freq, in kHz
+//MLX90640_I2CFreqSet(1000) sets frequency to 1MHz
+void MLX90640_I2CFreqSet(int freq)
+{
+  //i2c.frequency(1000 * freq);
+  Wire.setClock((long)1000 * freq);
+}
+
 int MLX90640_I2CRead(uint8_t _deviceAddress, unsigned int startAddress, unsigned int nWordsRead, uint16_t *data)
 {
 
@@ -71,14 +85,6 @@ int MLX90640_I2CRead(uint8_t _deviceAddress, unsigned int startAddress, unsigned
   }
 
   return (0); //Success
-}
-
-//Set I2C Freq, in kHz
-//MLX90640_I2CFreqSet(1000) sets frequency to 1MHz
-void MLX90640_I2CFreqSet(int freq)
-{
-  //i2c.frequency(1000 * freq);
-  Wire.setClock((long)1000 * freq);
 }
 
 //Write two bytes to a two byte address
