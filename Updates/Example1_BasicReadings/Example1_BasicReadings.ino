@@ -28,26 +28,23 @@
   Connect the male pins to the Teensy. The pinouts can be found here: https://www.pjrc.com/teensy/pinout.html
   Open the serial monitor at 9600 baud to see the output
 */
-#define SCB_AIRCR (*(volatile uint32_t *)0xE000ED0C) // Application Interrupt and Reset Control location
+//if false we use old data sets
 
-void _softRestart() 
-{
-  Serial.end();  //clears the serial monitor  if used
-  SCB_AIRCR = 0x05FA0004;  //write value for restart
-}
+
 #include <Wire.h>
-#include "factoryCalData.h"
+#define NEW_METHOD true
+#define DoubleResolution true //this doubels resolution output to 64x48 to make seeing objects a little easier
 #include "MLX90640_API.h"
 #include "MLX90640_I2C_Driver.h"
-
+#include "factoryCalData.h"
 const byte MLX90640_address= 0x33; //Default 7-bit unshifted address of the MLX90640
 #define wireClockSpeed 1000000 //we define here easier to set from here.
 #define SerialBaudRate 1000000 //this is speed of serial protocol. be sure enough time is set to allow messages to be sent thru before using i2c
 #define continuousmode true //true is default when sensor is bought, however we want step mode. this is checked by the code and only written to if it is different than value here. it is here for experimentation.
 #define hzMode 6//0=0.5hz,1=1hz,2=2hz,3=4hz,4=8hz,5=16hz,6=32hz,7=64hz 
-#define adSensorResolution 1 //0=16bit,it 1=17bit, 2=18bit, 3=19b
+#define adSensorResolution 3 //0=16bit,it 1=17bit, 2=18bit, 3=19b
 #define MLX90640_mirror true //this flips direction of sensor in case used in camera mode
-#define pixelmodeTrueTestModeFalse true //true outputs data in celcius
+#define pixelmodeTrueTestModeFalse true //true outputs display image of sorts to terminal, false outputs raw sensor data in deg C
 #define TA_SHIFT 8 //Default shift for MLX90640 in open air
 //thes are just some commands that we make sure are stored in flash instead of ram.
 void serial_mxl90460 (){Serial.print(F("MLX90640"));} //we use the defined word as a reusabel variable
@@ -62,7 +59,10 @@ void reset_and_msg(){serial_Data_should_now_be_changes_msg();delay(200);serial_r
 byte status =0;//we use for status
 static float mlx90640To[768];
 paramsMLX90640 mlx90640;
-
+#if DoubleResolution ==true
+float tempCache;//we use to up the resolution for show along x axis
+float temp1;
+#endif
 void setup()
 {
   Wire.begin();
@@ -71,48 +71,48 @@ void setup()
   Serial.begin(SerialBaudRate);
   while (!Serial); //Wait for user to open terminal
    for (byte i=0;i<64;i++){Serial.println();}//we clear screen in terminal in case reset.
-  serial_mxl90460; Serial.println(F(" IR Array Example Modified and changed by James Villeneuve"));
+  serial_mxl90460(); Serial.println(F(" IR Array Example Modified and changed by James Villeneuve"));
   Serial.println(F("BE PREPARED TO RESET CHIP EVERY TIME A FLASH PARAMITER IS CHANGED SUCH AS AD SENSATIVITY OR HZ rate, for example!"));
  delay(1500);//make sure serial done
-
-  if (isConnected() == false)
-  {
-    Serial.println("MLX90640 not detected at default I2C address. Please check wiring. Freezing.");
-    while (1);
-  }
- serial_mxl90460; Serial.println(F(" online!"));//we use print routine for word mxl90460, and then add word online!
-  delay(1500);//make sure serial done
-//here we run system check and compare to thermopile
- testFlashVsThermopileFlashAndCheckOtherSettings();
-
-
-
-
-
 //old check and needs to get ram values
   //Get device parameters - We only have to do this once
+
+  //Once params are extracted, we can release eeMLX90640 array
+  if (isConnected() == false)
+  {
+    Serial.println(F("MLX90640 not detected at default I2C address. Please check wiring. Freezing."));
+    while (1);
+  }
+ serial_mxl90460(); Serial.println(F(" online!"));//we use print routine for word mxl90460, and then add word online!
+  delay(1500);//make sure serial done
+//here we run system check and compare to thermopile
+ //testFlashVsThermopileFlashAndCheckOtherSettings();
+ delay(500);//make sure serial done
   int status;
   uint16_t eeMLX90640[832];
   status = MLX90640_DumpEE(MLX90640_address, eeMLX90640);
-  if (status != 0)
-    Serial.println("Failed to load system parameters");
+ 
 
   status = MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
-  if (status != 0)
-    Serial.println("Parameter extraction failed");
+ Serial.println(F("done old extraction. this will eventually go away"));
 
-  //Once params are extracted, we can release eeMLX90640 array
+Serial.println("paramiters data");
+
+
+
+
+
 }
 
 void loop()
-{
+{Serial.println(F("MainLoop Init ok"));
   for (byte x = 0 ; x < 2 ; x++) //Read both subpages
   {
     uint16_t mlx90640Frame[834];
     int status = MLX90640_GetFrameData(MLX90640_address, mlx90640Frame);
     if (status < 0)
     {
-      Serial.print("GetFrame Error: ");
+      Serial.print(F("GetFrame Error: "));
       Serial.println(status);
     }
 
@@ -121,31 +121,88 @@ void loop()
 
     float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
     float emissivity = 0.95;
-
+Serial.println(F("getting raw To values"));
     MLX90640_CalculateTo(mlx90640Frame, &mlx90640, emissivity, tr, mlx90640To);
   }
  for (int y = 0 ; y< 24 ; y++){
+  #if DoubleResolution ==true //this is where we double y data, buy averaging lines
+//here is where we show all thermopile cells as individual temp cells in deg C   
+ for (int ydouble = 0 ; ydouble <2 ; ydouble++){//this doubles y resolution
+#endif
   for (int x = 0 ; x < 32 ; x++)
   {
+//here is where we show a sort of image to serial terminal display    
+#if pixelmodeTrueTestModeFalse ==  true
 // Serial.print("|");
    // Serial.print(x);
    // Serial.print(": ");
    float temp=mlx90640To[x+y*32];
-   if (temp<26){Serial.print(". .");}
-    if (temp>26 & temp<29){Serial.print(".-.");}
-   if (temp>29 & temp<31){Serial.print(".+.");}
-   if (temp>31 & temp<33){Serial.print(".O.");}
-   if (temp>33 & temp<35){Serial.print(".#.");}
-   if (temp>35){Serial.print(".@.");}
+#if DoubleResolution ==true
+   if (ydouble==0){//this is raw data 
+    temp=(mlx90640To[x+y*32]);
+    temp1=(tempCache+temp)*0.5;//we use old value 
+   }
+
+      if (ydouble==1){//this we average ram between data for doubling y res
+        if (y<31){ temp=(mlx90640To[x+y*32]+mlx90640To[x+(y+1)*32])*0.5;}
+        else{temp=(mlx90640To[x+y*32]);}//we cant go above 768. 
+          temp1=(tempCache+temp)*0.5;//we use old value 
+   }
+   //first read 
+    if (temp1<26){Serial.print(". ");}
+    if ((temp1>26) & (temp1<29)){Serial.print(".-");}
+   if ((temp1>29) & (temp1<30)){Serial.print(".+");}
+   if ((temp1>30) & (temp1<31)){Serial.print(".X");}
+   if ((temp1>31) & (temp1<32)){Serial.print(".O");}
+   if ((temp1>32) & (temp1<33)){Serial.print(".0");}
+   if ((temp1>33) & (temp1<35)){Serial.print(".#");}
+   if (temp1>35){Serial.print(".@");}
+    tempCache=temp;//we use to average out res data
+//second read
+#endif
+   if (temp<26){Serial.print(". ");}
+    if ((temp>26) & (temp<29)){Serial.print(".-");}
+   if ((temp>29) & (temp<30)){Serial.print(".+");}
+   if ((temp>30) & (temp<31)){Serial.print(".X");}
+   if ((temp>31) & (temp<32)){Serial.print(".O");}
+   if ((temp>32) & (temp<33)){Serial.print(".0");}
+   if ((temp>33) & (temp<35)){Serial.print(".#");}
+   if (temp>35){Serial.print(".@");}
+
     //Serial.print("C");
    // Serial.println();
+  
+#endif
 
+
+
+
+
+
+
+
+
+#if pixelmodeTrueTestModeFalse !=  true
+ Serial.print("|");
+   // Serial.print(x);
+   // Serial.print(": ");
+   Serial.print(mlx90640To[x+y*32]);
+
+    Serial.print("C");
+
+#endif
   }
+   Serial.print(":");
   
  Serial.println();
  // delay(1000);
+   #if DoubleResolution ==true //this is where we double y data, buy averaging lines
+//here is where we show all thermopile cells as individual temp cells in deg C   
+ };//this ends loop if y res doubled
+#endif
 }
-delay(200);
+
+delay(500);
   for (int y = 0 ; y< 60 ; y++){//we scroll for new data
  Serial.print("\r\n");
   }
@@ -168,10 +225,10 @@ void  testFlashVsThermopileFlashAndCheckOtherSettings()
  Serial.println(F("This shows a single image from entire sensor. since we have the start count delay, the memory will already be filled with sensor data"));
  Serial.println();
  delay(200);//serial data to clear
-uint16_t startvalue[8];//array
+//uint16_t startvalue[8];//array
 
-float ta ;//we use 4 corner sensors to determin chip temp at start up, then we take lowest pixel on screen and use that.
-bool runonce =true;//singleshot
+//float ta ;//we use 4 corner sensors to determin chip temp at start up, then we take lowest pixel on screen and use that.
+
 //we check flash values
     for (int i=0;i<832;i++){//gets 0x2400 (9216) to 0x273f (10047)
 MLX90640_I2CRead(MLX90640_address, 0x2400+i, 1,worddata);
@@ -297,8 +354,8 @@ printBits(lowByte(worddata[0]));
 Serial.print(F(". This means that page is on:"));
 Serial.println(1&worddata[0]);//it can be zero or 1
  Serial.print(F("seconds before startup:"));
- for (byte i=7;i>0;i--){Serial.print(i);Serial.print(F(".."));delay(1000);}//7 seconds to read message before start
-
+ for (byte i=7;i>0;i--){Serial.print(i);Serial.print(F(".."));delay(500);}//7 seconds to read message before start
+/*
 //we force two scans so we get preuse data
 if (!continuousmode){//if we are in step mode we need to tell sensor to scan page
 MLX90640_I2CRead(MLX90640_address,  0x8000,  1,worddata);//we read sensor 
@@ -308,9 +365,11 @@ MLX90640_I2CWrite(MLX90640_address, 0x8000, worddata[0]);//we write modified val
 delay(600);
 worddata[0]=  worddata[0]|32;//we set 000000000100000 wich is register that starts measurement
 MLX90640_I2CWrite(MLX90640_address, 0x8000, worddata[0]);//we write modified values
+
+
 }
-
-
+*/
+Serial.print(F("completed main routines. ready for loops"));
 
     
 
@@ -318,12 +377,4 @@ MLX90640_I2CWrite(MLX90640_address, 0x8000, worddata[0]);//we write modified val
 
 
 
-}
-void printBits(byte myByte){
- for(byte mask = 0x80; mask; mask >>= 1){
-   if(mask  & myByte)
-       Serial.print('1');
-   else
-       Serial.print('0');
- }
 }
