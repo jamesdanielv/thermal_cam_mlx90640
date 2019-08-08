@@ -1,6 +1,8 @@
 # thermal_cam_mlx90640
 //all of these are still a work in progress. but there is enough here to see what is going on and get sensor working on arduino.
 
+look in updates folder for progress of code being converted to use less memory. as a bonus it doubles resolution and creates an ouput that is image like on serial monitor terminal.
+
 a few notes:
 
 you will want to run getEEpromDump.zip to get eeprom data from mlx60640, this allows all calibration data from factory to be on eeprom of arduino, so it saves time and data space doing it this way. run the data dump, then cut and paste into factoryCalData.h folder on other programs
