@@ -2,11 +2,12 @@
 //just cut and paste data dumped and paste it into this table
 //we reference this with #include "factoryCalData.h" 
 
-#ifndef _MLX90460SesorCalData
-#define _MLX90460SesorCalData
+#ifndef _MLX90460SensorCalData
+#define _MLX90460SensorCalData
+
 uint16_t worddata[1]; //used for data manipulation 1 word value or up to an entire row
 uint16_t mydata[32];//array for pulling data in 32 words 32(8bytex2) at a time
-const PROGMEM uint16_t factoryCalData[] =  {
+const  uint16_t factoryCalData[] PROGMEM=  {
 //data goes here 0x2400 (9216) to 0x273f (10047)
 171, 10651, 0, 8289, 5, 800, 992, 6670, 41522, 389, 1165, 0, 6401, 0, 0, 48691, 
 16912, 65471, 514, 514, 61954, 58098, 53729, 41152, 65038, 65039, 61168, 61424, 61442, 61700, 61957, 58116, 
@@ -63,4 +64,15 @@ const PROGMEM uint16_t factoryCalData[] =  {
 //date ends here
 };
 //**********************end of factort calibration data********************************************************************************************
+
+void printBits(byte myByte){
+ for(byte mask = 0x80; mask; mask >>= 1){
+   if(mask  & myByte)
+       Serial.print('1');
+   else
+       Serial.print('0');
+ }
+}
+
+
 #endif
