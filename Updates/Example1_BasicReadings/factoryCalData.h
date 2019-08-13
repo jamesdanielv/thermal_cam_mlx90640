@@ -4,9 +4,9 @@
 
 #ifndef _MLX90460SensorCalData
 #define _MLX90460SensorCalData
+#include <stdint.h>  //needed to define values as teensy libraryt doesnt include it automatically
+#include <avr/pgmspace.h> 
 
-uint16_t worddata[1]; //used for data manipulation 1 word value or up to an entire row
-uint16_t mydata[32];//array for pulling data in 32 words 32(8bytex2) at a time
 const  uint16_t factoryCalData[] PROGMEM=  {
 //data goes here 0x2400 (9216) to 0x273f (10047)
 171, 10651, 0, 8289, 5, 800, 992, 6670, 41522, 389, 1165, 0, 6401, 0, 0, 48691, 
@@ -65,14 +65,6 @@ const  uint16_t factoryCalData[] PROGMEM=  {
 };
 //**********************end of factort calibration data********************************************************************************************
 
-void printBits(byte myByte){
- for(byte mask = 0x80; mask; mask >>= 1){
-   if(mask  & myByte)
-       Serial.print('1');
-   else
-       Serial.print('0');
- }
-}
 
 
 #endif
