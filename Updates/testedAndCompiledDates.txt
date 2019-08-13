@@ -3,3 +3,4 @@ this is a history of when all files downloaded and tested for compiled. a sanity
 if files do not compile or compile with an error other than chip selection or comm port errors, look at this log, and then look for files dating to these file dates. i will download all files unzip and compile test every so often for sanity checks to ensure online data matches my compiles.
 
 all files downloaded and compiled together from updates folder 8/9/19 james villeneuve
+all files downloaded and compiled together from updates folder 8/13/19 james villeneuve
