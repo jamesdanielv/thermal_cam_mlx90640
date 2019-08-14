@@ -194,8 +194,121 @@ uint8_t i=row>>2;
             return temp;
 }
 
+float ExtractKtaPixelParametersRawPerPixel(uint16_t value )
+{
+    int p = 0;
+    int8_t KtaRC[4];
+    int8_t KtaRoCo;
+    int8_t KtaRoCe;
+    int8_t KtaReCo;
+    int8_t KtaReCe;
+    uint8_t ktaScale1;
+    uint8_t ktaScale2;
+    uint8_t split;
+
+    KtaRoCo = (eeDataGetStoredInLocalEPROM(54) & 0xFF00) >> 8;
+    if (KtaRoCo > 127)
+    {
+        KtaRoCo = KtaRoCo - 256;
+    }
+    KtaRC[0] = KtaRoCo;
+    
+    KtaReCo = (eeDataGetStoredInLocalEPROM(54)  & 0x00FF);
+    if (KtaReCo > 127)
+    {
+        KtaReCo = KtaReCo - 256;
+    }
+    KtaRC[2] = KtaReCo;
+      
+    KtaRoCe = (eeDataGetStoredInLocalEPROM(55)  & 0xFF00) >> 8;
+    if (KtaRoCe > 127)
+    {
+        KtaRoCe = KtaRoCe - 256;
+    }
+    KtaRC[1] = KtaRoCe;
+      
+    KtaReCe = (eeDataGetStoredInLocalEPROM(55)  & 0x00FF);
+    if (KtaReCe > 127)
+    {
+        KtaReCe = KtaReCe - 256;
+    }
+    KtaRC[3] = KtaReCe;
+  
+    ktaScale1 = ((eeDataGetStoredInLocalEPROM(56)  & 0x00F0) >> 4) + 8;
+    ktaScale2 = (eeDataGetStoredInLocalEPROM(56)  & 0x000F);
+
+  //  for(int i = 0; i < 24; i++)
+  //  {
+  //      for(int j = 0; j < 32; j ++)
+   //     {
+            p = value;//we are getting for a single pixel
+            split = 2*(p/32 - (p/64)*2) + p%2;
+            float temp = (eeDataGetStoredInLocalEPROM(64+p)  & 0x000E) >> 1;
+            if (temp > 3)
+            {
+                temp = temp - 8;
+            }
+            temp = temp * (1 << ktaScale2);
+           temp = KtaRC[split] + temp;
+            temp= temp / pow(2,(double)ktaScale1);
+            return temp;
+   //     }
+  //  }
+}
+float ExtractKvPixelParametersRawPerPixel(uint16_t value )
+{
+    int p = 0;
+    int8_t KvT[4];
+    int8_t KvRoCo;
+    int8_t KvRoCe;
+    int8_t KvReCo;
+    int8_t KvReCe;
+    uint8_t kvScale;
+    uint8_t split;
+
+    KvRoCo = (eeDataGetStoredInLocalEPROM(52)  & 0xF000) >> 12;
+    if (KvRoCo > 7)
+    {
+        KvRoCo = KvRoCo - 16;
+    }
+    KvT[0] = KvRoCo;
+    
+    KvReCo = (eeDataGetStoredInLocalEPROM(52)  & 0x0F00) >> 8;
+    if (KvReCo > 7)
+    {
+        KvReCo = KvReCo - 16;
+    }
+    KvT[2] = KvReCo;
+      
+    KvRoCe = (eeDataGetStoredInLocalEPROM(52)  & 0x00F0) >> 4;
+    if (KvRoCe > 7)
+    {
+        KvRoCe = KvRoCe - 16;
+    }
+    KvT[1] = KvRoCe;
+      
+    KvReCe = (eeDataGetStoredInLocalEPROM(52) & 0x000F);
+    if (KvReCe > 7)
+    {
+        KvReCe = KvReCe - 16;
+    }
+    KvT[3] = KvReCe;
+  
+    kvScale = (eeDataGetStoredInLocalEPROM(56) & 0x0F00) >> 8;
 
 
+ //   for(int i = 0; i < 24; i++)
+ //   {
+ //       for(int j = 0; j < 32; j ++)
+  //      {
+            p =value;
+            split = 2*(p/32 - (p/64)*2) + p%2;
+            float temp = KvT[split];
+             temp =  temp / pow(2,(double)kvScale);
+ //       }
+ //   }
+ return temp;
+}
 #endif
 
 //------------- old calcs
@@ -284,9 +397,11 @@ int MLX90640_ExtractParameters( )
         ExtractAlphaParameters();
         
        ExtractOffsetParameters();//not needed. and full test at bootup
-       #endif
+       
         ExtractKtaPixelParameters();
+        
         ExtractKvPixelParameters();
+        #endif
         ExtractCPParameters( );
         ExtractCILCParameters( );
        // error = ExtractDeviatingPixels(eeData, mlx90640);  
@@ -524,7 +639,7 @@ void MLX90640_CalculateTo(uint16_t *frameData,  float emissivity, float tr, floa
             irData = irData - offset[pixelNumber]*(1 + kta[pixelNumber]*(ta - 25))*(1 + kv[pixelNumber]*(vdd - 3.3));
 #endif
 #if NEW_METHOD ==true
-           irData = irData - ExtractOffsetParametersRawPerPixel(pixelNumber)*(1 + kta[pixelNumber]*(ta - 25))*(1 + kv[pixelNumber]*(vdd - 3.3));
+           irData = irData - ExtractOffsetParametersRawPerPixel(pixelNumber)*(1 + ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(ta - 25))*(1 + ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(vdd - 3.3));
 #endif
 
             
@@ -649,7 +764,7 @@ void MLX90640_GetImage(uint16_t *frameData,  float *result)
             }
             irData = irData * gain;
             
-            irData = irData - 1111*(1 + kta[pixelNumber]*(ta - 25))*(1 + kv[pixelNumber]*(vdd - 3.3));
+            irData = irData - ExtractOffsetParametersRawPerPixel(pixelNumber)*(1 +ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(ta - 25))*(1 + ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(vdd - 3.3));
             if(mode !=  calibrationModeEE)
             {
               irData = irData + ilChessC[2] * (2 * ilPattern - 1) - ilChessC[1] * conversionPattern; 
@@ -998,7 +1113,7 @@ void ExtractOffsetParameters( )
 #endif
 
 //------------------------------------------------------------------------------
-
+ #if NEW_METHOD != true 
 void ExtractKtaPixelParameters( )
 {
     int p = 0;
@@ -1059,9 +1174,9 @@ void ExtractKtaPixelParameters( )
         }
     }
 }
-
+#endif
 //------------------------------------------------------------------------------
-
+#if NEW_METHOD !=true   
 void ExtractKvPixelParameters()
 {
     int p = 0;
@@ -1115,7 +1230,7 @@ void ExtractKvPixelParameters()
         }
     }
 }
-
+#endif
 //------------------------------------------------------------------------------
 
 void ExtractCPParameters( )
