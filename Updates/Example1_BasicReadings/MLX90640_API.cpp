@@ -763,8 +763,12 @@ void MLX90640_GetImage(uint16_t *frameData,  float *result)
                 irData = irData - 65536;
             }
             irData = irData * gain;
-            
+            #if NEW_METHOD ==false  //old way
+             irData = irData - offset[pixelNumber]*(1 + kta[pixelNumber]*(ta - 25))*(1 + kv[pixelNumber]*(vdd - 3.3));
+            #endif
+             #if NEW_METHOD ==true  //old way
             irData = irData - ExtractOffsetParametersRawPerPixel(pixelNumber)*(1 +ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(ta - 25))*(1 + ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(vdd - 3.3));
+            #endif
             if(mode !=  calibrationModeEE)
             {
               irData = irData + ilChessC[2] * (2 * ilPattern - 1) - ilChessC[1] * conversionPattern; 
