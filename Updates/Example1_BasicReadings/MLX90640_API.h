@@ -25,19 +25,30 @@
    // } paramsMLX90640;
     
     int MLX90640_DumpEE(uint8_t slaveAddr);
-    int MLX90640_GetFrameData(uint8_t slaveAddr, uint16_t *frameData);
+    int MLX90640_GetFrameData(uint8_t slaveAddr);
     int MLX90640_ExtractParameters();
-    float MLX90640_GetVdd(uint16_t *frameData);
-    float MLX90640_GetTa(uint16_t *frameData);
-    void MLX90640_GetImage(uint16_t *frameData, float *result);
-    void MLX90640_CalculateTo(uint16_t *frameData,  float emissivity, float tr, float *result);
+    float MLX90640_GetVdd();
+    float MLX90640_GetTa();
+    void MLX90640_GetImage(float *result);
+    void MLX90640_CalculateTo();
+    float MLX90640_CalculateToRawPerPixel(uint16_t pixelNumber );
     int MLX90640_SetResolution(uint8_t slaveAddr, uint8_t resolution);
     int MLX90640_GetCurResolution(uint8_t slaveAddr);
     int MLX90640_SetRefreshRate(uint8_t slaveAddr, uint8_t refreshRate);   
     int MLX90640_GetRefreshRate(uint8_t slaveAddr);  
-    int MLX90640_GetSubPageNumber(uint16_t *frameData);
+    int MLX90640_GetSubPageNumber();
     int MLX90640_GetCurMode(uint8_t slaveAddr); 
     int MLX90640_SetInterleavedMode(uint8_t slaveAddr);
     int MLX90640_SetChessMode(uint8_t slaveAddr);
-
+    void SetSensorAtStart();
+    float Readmlx90640To(uint16_t value);
+    float emissivityvalue();
+    float trvalue();
+    void setframedata();
+    void InitSensor();//we initialize values for first read vdd,Ta, shift...
+    void resetForNewFrameSample();//this erases data in frame
+  void    setmemdataforAllPixelsTogether();
+  uint16_t readmlx90640To(uint16_t value);
+  void SetSubPageForFrameSample(uint16_t value);
+  void  reset_ram();
 #endif
