@@ -34,37 +34,39 @@
 #include <Wire.h>
 
 #define DoubleResolution true //this doubels resolution output to 64x48 to make seeing objects a little easier
+#define do_system_rom_verify_check true //this verifies that data is copied using
 #include "MLX90640_API.h"
 #include "MLX90640_I2C_Driver.h"
 #include "factoryCalData.h" //we use this to verify rom values
+#include "Z_MemManagment.h"//lets us know what mem management we are using
 
 #include "i2c_Address.h"
-#define wireClockSpeed 1000000 //we define here easier to set from here.
+#define wireClockSpeed 4000000 //we define here easier to set from here.800000 is fastest will work on arduino, 2mhz seems to work on teensy. not sure
 #define SerialBaudRate 1000000 //this is speed of serial protocol. be sure enough time is set to allow messages to be sent thru before using i2c
-#define continuousmode true //true is default when sensor is bought, however we want step mode. this is checked by the code and only written to if it is different than value here. it is here for experimentation.
+#define continuousmode true//true is default when sensor is bought, however we want step mode. this is checked by the code and only written to if it is different than value here. it is here for experimentation.
 #define hzMode 4//0=0.5hz,1=1hz,2=2hz,3=4hz,4=8hz,5=16hz,6=32hz,7=64hz 
 #define adSensorResolution 3 //0=16bit,it 1=17bit, 2=18bit, 3=19b
 #define MLX90640_mirror true //this flips direction of sensor in case used in camera mode
 #define pixelmodeTrueTestModeFalse true//true outputs display image of sorts to terminal, false outputs raw sensor data in deg C
-#define TA_SHIFT 8 //Default shift for MLX90640 in open air
+#define patternModecheckerInsteadOfscanline true //this is type of scan method
 //thes are just some commands that we make sure are stored in flash instead of ram.
 void serial_mxl90460 (){Serial.print(F("MLX90640"));} //we use the defined word as a reusabel variable
-void serial_reset_message(){Serial.println(F("rebooting so we can verify it took. if does not reboot in 5 seconds, then PRESS CHIP RESET BUTTON"));}
+void serial_reset_message(){Serial.println(F("making changes to firmware. if nothing happens in 5-10 seconds reboot chip"));delay(5000);return;}
 void serial_set_same_as_flash_msg(){Serial.println(F(" is set the same as #define settings in flash"));}
 void serial_HZ_msg(){Serial.print(F(" HZ"));}
 void serial_Data_should_now_be_changes_msg(){Serial.println(F("Data should now be changed."));}
 void setting_is_different(){Serial.println(F("setting is different in firmware. we are going to write data now."));}
 void Device_is_in_mode_of(){Serial.println(F(" Device is in mode of "));}
-void(* resetFunc) (void) = 0; //declare reset function @ address 0 //we reset if needed for hz change, allows reboot
-void reset_and_msg(){serial_Data_should_now_be_changes_msg();delay(200);serial_reset_message();delay(2000);resetFunc();}  //call reset
+void reset_and_msg(){serial_Data_should_now_be_changes_msg();delay(200);serial_reset_message();delay(2000);}  //call reset
 byte status =0;//we use for status
-static float mlx90640To[768];
+bool startupComplete= true;//this is used to loop or not loop
+
 //paramsMLX90640 mlx90640;//we no longer need this as pointer and me structure changed
 #if DoubleResolution ==true
 float tempCache;//we use to up the resolution for show along x axis
 float temp1;
-uint16_t wordstore[1];//used to manupuated data
 #endif
+uint16_t wordstore[1];//used to manupuated data
 void setup()
 {
   Wire.begin();
@@ -83,14 +85,18 @@ void setup()
   if (isConnected() == false)
   {
     Serial.println(F("MLX90640 not detected at default I2C address. Please check wiring. Freezing."));
-    while (1);
+   // while (1);
   }
  serial_mxl90460(); Serial.println(F(" online!"));//we use print routine for word mxl90460, and then add word online!
   delay(1500);//make sure serial done
 //here we run system check and compare to thermopile
+
+while (startupComplete ){//we set to false if it passes
+  for (byte i=0;i<64;i++){Serial.println();}//we clear screen in terminal in case reset.
  testFlashVsThermopileFlashAndCheckOtherSettings();
  delay(500);//make sure serial done
-  int status;
+}
+//  int status;
  // uint16_t eeMLX90640[832];
 //  status = MLX90640_DumpEE(MLX90640_address, eeMLX90640);//we no longer need this as data is stored in on board epprom!
  
@@ -114,24 +120,36 @@ void printBits(byte myByte){
 }
 void loop()
 {Serial.println(F("MainLoop Init ok"));
-  for (byte x = 0 ; x < 2 ; x++) //Read both subpages
-  {
-    uint16_t mlx90640Frame[834];
-    int status = MLX90640_GetFrameData(MLX90640_address, mlx90640Frame);
+ //reset_ram();//this resets all ram values before we store them
+#if NEW_METHOD == false
+  for (byte x = 0 ; x < 2 ; x++){ //Read both subpages and store all in ram
+#endif    
+#if NEW_METHOD == true
+
+  for (byte x = 0 ; x < 1 ; x++){ //Read 1 time as all data is stored on ram of sensor. so it can all be read at once
+#endif 
+  
+ 
+    int status = MLX90640_GetFrameData(MLX90640_address);
+
     if (status < 0)
     {
       Serial.print(F("GetFrame Error: "));
       Serial.println(status);
     }
+InitSensor();//same code as old just managed in mlx90640_api now. we do before first run, and most likely before every run?
 
-    float vdd = MLX90640_GetVdd(mlx90640Frame);
-    float Ta = MLX90640_GetTa(mlx90640Frame);
-
-    float tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-    float emissivity = 0.95;
 Serial.println(F("getting raw To values"));
-    MLX90640_CalculateTo(mlx90640Frame, emissivity, tr, mlx90640To);
+#if NEW_METHOD == false //this means using old method  
+    MLX90640_CalculateTo();
+#endif//new method does not need everything all at once! we get it from mem cal
   }
+ 
+  delay(200);
+  for (int y = 0 ; y< 60 ; y++){//we scroll for new data
+ Serial.print("\r\n");
+  }
+  Serial.println("");
  for (int y = 0 ; y< 24 ; y++){
   #if DoubleResolution ==true //this is where we double y data, buy averaging lines
 //here is where we show all thermopile cells as individual temp cells in deg C   
@@ -144,16 +162,16 @@ Serial.println(F("getting raw To values"));
 // Serial.print("|");
    // Serial.print(x);
    // Serial.print(": ");
-   float temp=mlx90640To[x+y*32];
+   float temp=Readmlx90640To(x+y*32);
 #if DoubleResolution ==true
    if (ydouble==0){//this is raw data 
-    temp=(mlx90640To[x+y*32]);
+   // temp=(Readmlx90640To(x+y*32));//this is redundant and causes more reads than needed
     temp1=(tempCache+temp)*0.5;//we use old value 
    }
 
       if (ydouble==1){//this we average ram between data for doubling y res
-        if (y<31){ temp=(mlx90640To[x+y*32]+mlx90640To[x+(y+1)*32])*0.5;}
-        else{temp=(mlx90640To[x+y*32]);}//we cant go above 768. 
+        if (y<31){ temp=(Readmlx90640To(x+y*32)+Readmlx90640To(x+(y+1)*32))*0.5;}
+        else{temp=(Readmlx90640To(x+y*32));}//we cant go above 768. 
           temp1=(tempCache+temp)*0.5;//we use old value 
    }
    //first read 
@@ -194,7 +212,7 @@ Serial.println(F("getting raw To values"));
  Serial.print("|");
    // Serial.print(x);
    // Serial.print(": ");
-   Serial.print(mlx90640To[x+y*32]);
+   Serial.print(Readmlx90640To(x+y*32));
 
     Serial.print("C");
 
@@ -210,11 +228,7 @@ Serial.println(F("getting raw To values"));
 #endif
 }
 
-delay(500);
-  for (int y = 0 ; y< 60 ; y++){//we scroll for new data
- Serial.print("\r\n");
-  }
-  Serial.println("");
+
 }
 
 //Returns true if the MLX90640 is detected on the I2C bus
@@ -234,7 +248,12 @@ void  testFlashVsThermopileFlashAndCheckOtherSettings()
  Serial.println();
  delay(200);//serial data to clear
 //uint16_t startvalue[8];//array
-
+#if patternModecheckerInsteadOfscanline == true
+MLX90640_SetChessMode(MLX90640_address);//set chess pattern read
+#else
+MLX90640_SetInterleavedMode(MLX90640_address);//set scan line mode read
+#endif
+ delay(200);//serial data to clear
 //float ta ;//we use 4 corner sensors to determin chip temp at start up, then we take lowest pixel on screen and use that.
 
 //we check flash values
@@ -379,7 +398,7 @@ MLX90640_I2CWrite(MLX90640_address, 0x8000, worddata[0]);//we write modified val
 */
 Serial.print(F("completed main routines. ready for loops"));
 
-    
+startupComplete=false;//we completed, so we no longer need to do this again    
 
 
 
