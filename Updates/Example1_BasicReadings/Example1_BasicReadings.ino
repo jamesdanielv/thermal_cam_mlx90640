@@ -41,7 +41,7 @@
 #include "Z_MemManagment.h"//lets us know what mem management we are using
 
 #include "i2c_Address.h"
-#define wireClockSpeed 4000000 //we define here easier to set from here.800000 is fastest will work on arduino, 2mhz seems to work on teensy. not sure
+#define wireClockSpeed 800000 //we define here easier to set from here.800000 is fastest will work on arduino, 2mhz seems to work on teensy. not sure
 #define SerialBaudRate 1000000 //this is speed of serial protocol. be sure enough time is set to allow messages to be sent thru before using i2c
 #define continuousmode true//true is default when sensor is bought, however we want step mode. this is checked by the code and only written to if it is different than value here. it is here for experimentation.
 #define hzMode 4//0=0.5hz,1=1hz,2=2hz,3=4hz,4=8hz,5=16hz,6=32hz,7=64hz 
