@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
+ * files have been modified by james villeneuve
  */
+
 #include "Z_MemManagment.h"//tells us what mem managment we are using, old or new
 #include "factoryCalData.h"
 #include "MLX90640_I2C_Driver.h"
