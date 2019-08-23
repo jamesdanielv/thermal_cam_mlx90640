@@ -4,7 +4,7 @@ this is just a folder that contains rom, as originally modified,
 and will containt changes i bring over that reduce ram usage and so forth
 
 
-im going to try to have #define NEWMETHOND true, or false for verifying works the same in high memory and low memory usage up to a point.
+im going to try to have #define NEW_METHOND true, or false for verifying works the same in high memory and low memory usage up to a point. this just changes the method of data storage from mostly ram to mostly on the sensor. in all cases i will remove the extreme stack needed for addressing of pointers.
 
 setting pixelmodeTrueTestModeFalse false will output raw values in C at 32x24 resolution.
 
