@@ -13,12 +13,19 @@ so i got a 3.2 teensy processor with 64k of ram and have it outputing a screen e
 instead of printing out C from mlx90640To[x], i switched output to be this
 
    float temp=mlx90640To[x+y*32];
+   
    if (temp<26){Serial.print(". .");}
+   
     if (temp>26 & temp<29){Serial.print(".-.");}
+    
    if (temp>29 & temp<31){Serial.print(".+.");}
+   
    if (temp>31 & temp<33){Serial.print(".O.");}
+   
    if (temp>33 & temp<35){Serial.print(".#.");}
+   
    if (temp>35){Serial.print(".@.");}
+   this is sort of a pixel art map from ascii char art.
    
    this allows a denser display showing of information if a warm body is in front of sensor.
    
