@@ -1,4 +1,7 @@
 # thermal_cam_mlx90640
+all i ask is you give credit where credit do. to MIT, to original authors and to me for my time and effort here. you might be doing the next big thing and the work here might help or save you time.
+
+
 //all of these are still a work in progress. but there is enough here to see what is going on and get sensor working on arduino.
 
 look in updates folder for progress of code being converted to use less memory. as a bonus it doubles resolution and creates an ouput that is image like on serial monitor terminal.
