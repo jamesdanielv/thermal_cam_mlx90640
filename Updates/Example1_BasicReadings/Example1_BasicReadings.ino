@@ -28,8 +28,7 @@
   Connect the male pins to the Teensy. The pinouts can be found here: https://www.pjrc.com/teensy/pinout.html
   Open the serial monitor at 9600 baud to see the output
 */
-//if false we use old data sets
-
+// some of the setup functions have been removed or moved to the void InitSensor() in "MLX90640_API.h"
 
 #include <Wire.h>
 
