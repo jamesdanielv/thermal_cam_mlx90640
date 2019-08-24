@@ -16,13 +16,11 @@
  * files have been modified by james villeneuve
  */
 
-#include "Z_MemManagment.h"//tells us what mem managment we are using, old or new
+#include "Z_MemManagment.h"//tells us what mem managment we are using, old or new more mem efficient
 #include "factoryCalData.h"
 #include "MLX90640_I2C_Driver.h"
 #include "MLX90640_API.h"
-#if NEW_METHOD != true
-#include <math.h> //no longer needed saves 5k of rom
-#endif
+#include <math.h> //no longer needed if using q_sqrt saves 5k of flash rom letting compiler decide if it is used or not. 
 #include "i2c_Address.h" 
 #include "memCache.h"
 #include "pixelframemem.h"
@@ -97,19 +95,19 @@ float SimplePow(float base, uint8_t exponent)
   tempbase=tempbase*base;}}else{tempbase=1;}//we multiply unless exponent is 0 then result is 1
  return tempbase;//we return result
 }
+/* not using this method officially yet. so it will be removed to avoid cross boundery errors (we are hacking a cast to a float from a long.)
 float Q_rsqrt( float number ) //a good enough square root method.
 {//https://en.wikipedia.org/wiki/Fast_inverse_square_root
-  long i;float x2, y;const float threehalfs = 1.5F;
+  long i;float x2;float y; float threehalfs = 1.5F;
   x2 = number * 0.5F;
   y  = number;
   i  = * ( long * ) &y;                       // evil floating point bit level hacking
   i  = 0x5f3759df - ( i >> 1 );               // ######edited language###
   y  = * ( float * ) &i;
   y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
-//  y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
+  y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
   return y;
-}
-
+}*/
 //**************************************************************************************
 #if NEW_METHOD == true   //these are low mem methods of getting same data. whodda thought?
  
@@ -122,8 +120,8 @@ int16_t ExtractOffsetParametersRawPerPixel(uint16_t value )
     //int occRow[24];
     //int occColumn[32];
     //we only need to store one word each as conversion done on the fly
-    int occRow;
-    int occColumn;
+    int occRow=0;
+    int occColumn=0;
    uint8_t p = 0;
     int16_t offsetRef;
    uint8_t occRowScale;
@@ -195,8 +193,8 @@ float ExtractAlphaParametersRawPerPixel(uint16_t value )
   uint8_t col= (value&31) ;//we take bottom 5 bits and add as we use 1-32
   uint8_t row=(value&65504)>>5;;//this should have upper bits only
   
-    int accRow;
-    int accColumn;
+    int accRow=0;
+    int accColumn=0;
     int p = 0;
     int alphaRef;
     uint8_t alphaScale;
@@ -204,7 +202,7 @@ float ExtractAlphaParametersRawPerPixel(uint16_t value )
     uint8_t accColumnScale;
     uint8_t accRemScale;
     
-
+ 
     accRemScale = eeDataGetStoredInLocalEPROM(32) & 0x000F;
     accColumnScale = (eeDataGetStoredInLocalEPROM(32) & 0x00F0) >> 4;
     accRowScale = (eeDataGetStoredInLocalEPROM(32) & 0x0F00) >> 8;
@@ -427,9 +425,9 @@ if (pixelNumber == 0){//we only do this on start of page
 }//this is for one time per read check of data
    // for( int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
    // {
-        sub_calc_ilPattern = (pixelNumber >>5) - (pixelNumber>>6) <<1; 
-        sub_calc_chessPattern = sub_calc_ilPattern ^ (pixelNumber - (pixelNumber/2)<<1); 
-        sub_calc_conversionPattern = ((pixelNumber + 2) >>2 - (pixelNumber + 3) >>2 + (pixelNumber + 1) >>2 - pixelNumber >>2) * (1 - 2 * sub_calc_ilPattern);
+        sub_calc_ilPattern = (pixelNumber >>5) - ((pixelNumber>>6) <<1); 
+        sub_calc_chessPattern = sub_calc_ilPattern ^ (pixelNumber - ((pixelNumber/2)<<1)); 
+        sub_calc_conversionPattern = (((pixelNumber + 2) >>2) - ((pixelNumber + 3) >>2) + ((pixelNumber + 1) >>2) - (pixelNumber >>2)) * (1 - 2 * sub_calc_ilPattern);
         
         if(sub_calc_mode == 0)
         {
@@ -476,8 +474,8 @@ if (pixelNumber == 0){//we only do this on start of page
             #endif
             sub_calc_Sx = SimplePow((double)sub_calc_alphaCompensated, (double)3) * (sub_calc_irData + sub_calc_alphaCompensated * sub_calc_taTr);
           
-            sub_calc_Sx = Q_rsqrt((sub_calc_Sx))       * ksTo[1];
-            sub_calc_To = Q_rsqrt(Q_rsqrt(sub_calc_irData/(sub_calc_alphaCompensated * (1 - ksTo[1] * 273.15) + sub_calc_Sx) + sub_calc_taTr)) - 273.15;
+            sub_calc_Sx = sqrt((sub_calc_Sx))       * ksTo[1];
+            sub_calc_To = sqrt(sqrt(sub_calc_irData/(sub_calc_alphaCompensated * (1 - ksTo[1] * 273.15) + sub_calc_Sx) + sub_calc_taTr)) - 273.15;
            
             if(sub_calc_To < ct[1])
             {
@@ -496,7 +494,7 @@ if (pixelNumber == 0){//we only do this on start of page
                 sub_calc_range = 3;            
             }      
             
-            sub_calc_To =Q_rsqrt(Q_rsqrt(sub_calc_irData / (sub_calc_alphaCompensated * sub_calc_alphaCorrR[sub_calc_range] * (1 + ksTo[sub_calc_range] * (sub_calc_To - ct[sub_calc_range]))) + sub_calc_taTr)) - 273.15;
+            sub_calc_To =sqrt(sqrt(sub_calc_irData / (sub_calc_alphaCompensated * sub_calc_alphaCorrR[sub_calc_range] * (1 + ksTo[sub_calc_range] * (sub_calc_To - ct[sub_calc_range]))) + sub_calc_taTr)) - 273.15;
             
            
            
@@ -898,106 +896,6 @@ void MLX90640_CalculateTo()
 
 //------------------------------------------------------------------------------
 
-void MLX90640_GetImage( float *result)
-{
-    float vdd;
-    float ta;
-    float gain;
-    float irDataCP[2];
-    float irData;
-    float alphaCompensated;
-    uint8_t mode;
-   int8_t ilPattern;
-    int8_t chessPattern;
-    int8_t pattern;
-    int8_t conversionPattern;
-    float image;
-    uint16_t subPage;
-    
-    subPage =mlx90640Frame[833];
-    vdd = MLX90640_GetVdd();
-    ta = MLX90640_GetTa();
-    
-//------------------------- Gain calculation -----------------------------------    
-    gain = mlx90640Frame[778];
-    if(gain > 32767)
-    {
-        gain = gain - 65536;
-    }
-    
-    gain = gainEE / gain; 
-  
-//------------------------- Image calculation -------------------------------------    
-    mode = (mlx90640Frame[832] & 0x1000) >> 5;
-    
-    irDataCP[0] = mlx90640Frame[776];  
-    irDataCP[1] = mlx90640Frame[808];
-    for( int i = 0; i < 2; i++)
-    {
-        if(irDataCP[i] > 32767)
-        {
-            irDataCP[i] = irDataCP[i] - 65536;
-        }
-        irDataCP[i] = irDataCP[i] * gain;
-    }
-    irDataCP[0] = irDataCP[0] - cpOffset[0] * (1 + cpKta * (ta - 25)) * (1 + cpKv * (vdd - 3.3));
-    if( mode ==  calibrationModeEE)
-    {
-        irDataCP[1] = irDataCP[1] - cpOffset[1] * (1 + cpKta * (ta - 25)) * (1 + cpKv * (vdd - 3.3));
-    }
-    else
-    {
-      irDataCP[1] = irDataCP[1] - (cpOffset[1] + ilChessC[0]) * (1 + cpKta * (ta - 25)) * (1 + cpKv * (vdd - 3.3));
-    }
-
-    for( int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
-    {
-        ilPattern = pixelNumber / 32 - (pixelNumber / 64) * 2; 
-        chessPattern = ilPattern ^ (pixelNumber - (pixelNumber/2)*2); 
-        conversionPattern = ((pixelNumber + 2) / 4 - (pixelNumber + 3) / 4 + (pixelNumber + 1) / 4 - pixelNumber / 4) * (1 - 2 * ilPattern);
-        
-        if(mode == 0)
-        {
-          pattern = ilPattern; 
-        }
-        else 
-        {
-          pattern = chessPattern; 
-        }
-        
-        if(pattern == mlx90640Frame[833])
-        {    
-            irData = mlx90640Frame[pixelNumber];
-            if(irData > 32767)
-            {
-                irData = irData - 65536;
-            }
-            irData = irData * gain;
-            #if NEW_METHOD ==false  //old way
-             irData = irData - offset[pixelNumber]*(1 + kta[pixelNumber]*(ta - 25))*(1 + kv[pixelNumber]*(vdd - 3.3));
-            #endif
-             #if NEW_METHOD ==true  //old way
-            irData = irData - ExtractOffsetParametersRawPerPixel(pixelNumber)*(1 +ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(ta - 25))*(1 + ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(vdd - 3.3));
-            #endif
-            if(mode !=  calibrationModeEE)
-            {
-              irData = irData + ilChessC[2] * (2 * ilPattern - 1) - ilChessC[1] * conversionPattern; 
-            }
-            
-            irData = irData - tgc * irDataCP[subPage];
-            #if NEW_METHOD != true 
-            alphaCompensated = (alpha[pixelNumber] - tgc * cpAlpha[subPage])*(1 + KsTa * (ta - 25));
-            #endif
-            #if NEW_METHOD == true 
-            alphaCompensated = (ExtractAlphaParametersRawPerPixel(pixelNumber) - tgc * cpAlpha[subPage])*(1 + KsTa * (ta - 25));
-            #endif
-            image = irData/alphaCompensated;
-            
-            result[pixelNumber] = image;
-        }
-    }
-}
-//------------------------------------------------------------------------------
 
 float MLX90640_GetVdd()
 {
@@ -1770,6 +1668,106 @@ int MLX90640_GetFrameData(uint8_t slaveAddr)
     return  mlx90640Frame[833];    
 }
 
+void MLX90640_GetImage( float *result)
+{
+    float vdd;
+    float ta;
+    float gain;
+    float irDataCP[2];
+    float irData;
+    float alphaCompensated;
+    uint8_t mode;
+   int8_t ilPattern;
+    int8_t chessPattern;
+    int8_t pattern;
+    int8_t conversionPattern;
+    float image;
+    uint16_t subPage;
+    
+    subPage =mlx90640Frame[833];
+    vdd = MLX90640_GetVdd();
+    ta = MLX90640_GetTa();
+    
+//------------------------- Gain calculation -----------------------------------    
+    gain = mlx90640Frame[778];
+    if(gain > 32767)
+    {
+        gain = gain - 65536;
+    }
+    
+    gain = gainEE / gain; 
+  
+//------------------------- Image calculation -------------------------------------    
+    mode = (mlx90640Frame[832] & 0x1000) >> 5;
+    
+    irDataCP[0] = mlx90640Frame[776];  
+    irDataCP[1] = mlx90640Frame[808];
+    for( int i = 0; i < 2; i++)
+    {
+        if(irDataCP[i] > 32767)
+        {
+            irDataCP[i] = irDataCP[i] - 65536;
+        }
+        irDataCP[i] = irDataCP[i] * gain;
+    }
+    irDataCP[0] = irDataCP[0] - cpOffset[0] * (1 + cpKta * (ta - 25)) * (1 + cpKv * (vdd - 3.3));
+    if( mode ==  calibrationModeEE)
+    {
+        irDataCP[1] = irDataCP[1] - cpOffset[1] * (1 + cpKta * (ta - 25)) * (1 + cpKv * (vdd - 3.3));
+    }
+    else
+    {
+      irDataCP[1] = irDataCP[1] - (cpOffset[1] + ilChessC[0]) * (1 + cpKta * (ta - 25)) * (1 + cpKv * (vdd - 3.3));
+    }
+
+    for( int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
+    {
+        ilPattern = pixelNumber / 32 - (pixelNumber / 64) * 2; 
+        chessPattern = ilPattern ^ (pixelNumber - (pixelNumber/2)*2); 
+        conversionPattern = ((pixelNumber + 2) / 4 - (pixelNumber + 3) / 4 + (pixelNumber + 1) / 4 - pixelNumber / 4) * (1 - 2 * ilPattern);
+        
+        if(mode == 0)
+        {
+          pattern = ilPattern; 
+        }
+        else 
+        {
+          pattern = chessPattern; 
+        }
+        
+        if(pattern == mlx90640Frame[833])
+        {    
+            irData = mlx90640Frame[pixelNumber];
+            if(irData > 32767)
+            {
+                irData = irData - 65536;
+            }
+            irData = irData * gain;
+            #if NEW_METHOD ==false  //old way
+             irData = irData - offset[pixelNumber]*(1 + kta[pixelNumber]*(ta - 25))*(1 + kv[pixelNumber]*(vdd - 3.3));
+            #endif
+             #if NEW_METHOD ==true  //old way
+            irData = irData - ExtractOffsetParametersRawPerPixel(pixelNumber)*(1 +ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(ta - 25))*(1 + ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(vdd - 3.3));
+            #endif
+            if(mode !=  calibrationModeEE)
+            {
+              irData = irData + ilChessC[2] * (2 * ilPattern - 1) - ilChessC[1] * conversionPattern; 
+            }
+            
+            irData = irData - tgc * irDataCP[subPage];
+            #if NEW_METHOD != true 
+            alphaCompensated = (alpha[pixelNumber] - tgc * cpAlpha[subPage])*(1 + KsTa * (ta - 25));
+            #endif
+            #if NEW_METHOD == true 
+            alphaCompensated = (ExtractAlphaParametersRawPerPixel(pixelNumber) - tgc * cpAlpha[subPage])*(1 + KsTa * (ta - 25));
+            #endif
+            image = irData/alphaCompensated;
+            
+            result[pixelNumber] = image;
+        }
+    }
+}
+//------------------------------------------------------------------------------
 
 
 #endif
