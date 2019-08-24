@@ -35,6 +35,7 @@ instead of printing out C from mlx90640To[x], i switched output to be this
    
    1) reduce ram usage to about 1k from ~20k (most ram values are static floats, that are only calculated at init.
    2) store rom cal values in flash for faster access, than pulling from thermopile flash (this is why current store is ram)
-   3) dramatically increase performance by removing redundant math. for example squaring in this contects is just 2^0 to 2^16. 
+   3) dramatically increase performance by removing redundant math. for example squaring in this contects is just 2^0 to 2^16. (found in some cases this goes up past 34, so need to expand the table), so not using this until table is redone
    a table will speed up math processes in this case by a guestimate of 100.
    4) a lot less ram thrashing of floats. for now floats still needed because of range of values
+   
