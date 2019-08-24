@@ -11,7 +11,7 @@ i have had the sensor working for some time at some level, but there are issues 
 so i got a 3.2 teensy processor with 64k of ram and have it outputing a screen equivilent of data.
 
 instead of printing out C from mlx90640To[x], i switched output to be this
-
+* this was before i modified mem pointers, now mem is accessed thru a function Readmlx90640To();
    float temp=mlx90640To[x+y*32];
    
    if (temp<26){Serial.print(". .");}
