@@ -2,7 +2,7 @@
 all i ask is you give credit where credit do. to MIT, to original authors and to me for my time and effort here. you might be doing the next big thing and the work here might help or save you time.
 
 
-//all of these are still a work in progress. but there is enough here to see what is going on and get sensor working on arduino.
+//all of these are still a work in progress. but there is enough here to see what is going on and get sensor working on arduino, but with the calibrations settings the data is currently out of range for the arduino in the updates folder. the main folder pulls data from rom and seems to measure, but it only gets the temp of the silicone and errors from there. i rebuilt the software and had it so i can compare old and new methods side by side. there are math errors on arduino, however the code does take a lot less memory and work on the teensy 3.1/3.2. look in updates folder. i will be making changes to code that allow a 64 bit float library to be used. this should allow the uno to function ok, also there is the possibility of simplifying the equations to reduce the POW (base, exponent) and the sqrt requirements that make great resulution detail nessisary for calibrated results. however the examples the uno will work ok, because there is no detailed calibration just a sensativity adjustment at start up.
 
 look in updates folder for progress of code being converted to use less memory. as a bonus it doubles resolution and creates an ouput that is image like on serial monitor terminal.
 
