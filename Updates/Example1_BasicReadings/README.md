@@ -14,3 +14,5 @@ using new memory methods should be done by changing to #define NEWMETHOND true
 
 also i doubled sensor resolution without increasing memory usage. output to terminal in image mode outputs 64x48. but really it is 63x47 because left value has nothing to compare and bottom values have nothing to compare too, for simplicity i just chose to in this case make them the same as the nex value.
 
+
+there may be some errors relating to get_image function. it currently is not used or made to work with NEW_METHOD. but it will be working by next update. it is required for faster read of pixels as it does not need to convert data to temp.
