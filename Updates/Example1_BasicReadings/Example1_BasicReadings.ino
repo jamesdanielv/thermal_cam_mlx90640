@@ -393,6 +393,6 @@ startupComplete=false;//we completed, so we no longer need to do this again
 #define ErrorObj("this processor can not reliably do over 800khz, change wireClockSpeed in sketch to no greater than 800000");
 #endif
 #endif
-#if wireClockSpeed > 800000
+#if wireClockSpeed > 1000000
 #define ErrorObj("the MLX90640 sensor only is in spec to 1mhz. look at wireClockSPeed and make changes. going over 1mhz can damage sensor");
 #endif 
