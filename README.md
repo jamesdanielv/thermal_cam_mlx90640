@@ -2,7 +2,7 @@
 all i ask is you give credit where credit do. to MIT, to original authors and to me for my time and effort here. you might be doing the next big thing and the work here might help or save you time.
 
 
-//all of these are still a work in progress. there is code that works calibrated for the arudino, and it has been verfied to the original test code. it uses about 1k and if using i2c data cache it uses about 3k. this will go down soon.
+//all of these are still a work in progress, however there is fully functional code in the /updates folder. there is code that works calibrated for the arudino, and it has been verfied to the original test code. it uses about 1k and if using i2c data cache it uses about 3k. this will go down soon.
 look in the /updates folder for code. this code will be moved into the main directory sometime after end of sept.
 
 look in updates folder for progress of code being converted to use less memory. as a bonus it doubles resolution and creates an ouput that is image like on serial monitor terminal.
