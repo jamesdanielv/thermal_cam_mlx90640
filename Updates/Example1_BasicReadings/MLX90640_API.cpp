@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- * files have been modified by james villeneuve
  */
 
-#include "Z_MemManagment.h"//tells us what mem managment we are using, old or new more mem efficient
+#include "Z_MemManagment.h"//tells us what mem managment we are using, old or new
 #include "factoryCalData.h"
 #include "MLX90640_I2C_Driver.h"
 #include "MLX90640_API.h"
-#include <math.h> //no longer needed if using q_sqrt saves 5k of flash rom letting compiler decide if it is used or not. 
+//#include <math.h> //no longer needed saves 5k of rom
 #include "i2c_Address.h" 
 #include "memCache.h"
 #include "pixelframemem.h"
@@ -42,7 +41,7 @@ int ExtractDeviatingPixels( );
 int CheckAdjacentPixels(uint16_t pix1, uint16_t pix2);
 int CheckEEPROMValid(uint16_t *eeData);
 
-uint16_t linecache;//we store current line on
+
 //---------------- simple set
 
 uint16_t eeDataGetStoredInLocalEPROM(uint16_t value){
@@ -52,33 +51,42 @@ return pgm_read_word_near(factoryCalData+ value);
   
 }
 uint16_t RamGetStoredInLocal(uint16_t value){
-//400+
+  
+#if customSmallCacheForMemReads !=true //we read only 2 bytes at a time with a lot of address overhead
  MLX90640_I2CRead(MLX90640_address, 1024+value, 1,worddata);
 return worddata[0];
+#endif
+#if customSmallCacheForMemReads ==true //we read only 2 bytes at a time with a lot of address overhead
+
+ if (value>998){//this is a temp value that speeds up mem reads
+ MLX90640_I2CRead(MLX90640_address, 1024, 768,SmallMemCache_i2c_efficency);
+ }
+
+ return SmallMemCache_i2c_efficency[value];//we return cached value most if time
+#endif
+
+}
+
+void cachloadram(){
+RamGetStoredInLocal(999);//causes reload
   
 }
 
-uint16_t RamGetStoredInLocalManyatonce(uint16_t value){
-//400+
-// temp=value;
-uint16_t temp=value & 31;//we make it so only lower bits are known
-if (linecache !=(value &65505)) {//if we are on a different line
-
- MLX90640_I2CRead(MLX90640_address, 1024+value, 32,worddata);
-linecache =value &65505;//we set line
-}
-return worddata[temp];
-  
-}
 
 float Readmlx90640To(uint16_t value){
 #if NEW_METHOD == true 
+#if Replace_detailed_calc_with_image_data != true
 return  MLX90640_CalculateToRawPerPixel(value);
+#else
+return  MLX90640_GetImageRawPerPixel(value);//let accurate but should be faster with less math
+#endif
 #endif
 #if NEW_METHOD == false
 return mlx90640To[value];//old method
 #endif
 }
+
+
 
 void InitSensor(){
     vdd = MLX90640_GetVdd();
@@ -86,6 +94,11 @@ void InitSensor(){
 
     tr = Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
      emissivity = 0.95;
+Analog_resolution=MLX90640_GetCurResolution(MLX90640_address);//we get resolution of ad converter 16-19 bit resolution
+Analog_resolution+=16;//this makes resolution 16-19
+
+
+ 
 }
 
 float SimplePow(float base, uint8_t exponent)
@@ -95,19 +108,28 @@ float SimplePow(float base, uint8_t exponent)
   tempbase=tempbase*base;}}else{tempbase=1;}//we multiply unless exponent is 0 then result is 1
  return tempbase;//we return result
 }
-/* not using this method officially yet. so it will be removed to avoid cross boundery errors (we are hacking a cast to a float from a long.)
-float Q_rsqrt( float number ) //a good enough square root method.
-{//https://en.wikipedia.org/wiki/Fast_inverse_square_root
-  long i;float x2;float y; float threehalfs = 1.5F;
+
+
+float Q_rsqrt( float number ) //a good enough square root method. if not enabled in Z_memManagment then it will work as regular sqrt and use math library
+{
+  #if USE_FAST_SQUARERT_METHOD == true
+  //https://en.wikipedia.org/wiki/Fast_inverse_square_root
+  long i;float x2, y;const float threehalfs = 1.5F;
   x2 = number * 0.5F;
   y  = number;
   i  = * ( long * ) &y;                       // evil floating point bit level hacking
-  i  = 0x5f3759df - ( i >> 1 );               // ######edited language###
+  i  = 0x5f3759df - ( i >> 1 );               // what the #!$% (deleted bad language)
   y  = * ( float * ) &i;
   y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
-  y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
+//  y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
   return y;
-}*/
+
+  #else 
+
+  return sqrt(number);
+  #endif
+}
+
 //**************************************************************************************
 #if NEW_METHOD == true   //these are low mem methods of getting same data. whodda thought?
  
@@ -120,8 +142,8 @@ int16_t ExtractOffsetParametersRawPerPixel(uint16_t value )
     //int occRow[24];
     //int occColumn[32];
     //we only need to store one word each as conversion done on the fly
-    int occRow=0;
-    int occColumn=0;
+    int occRow;
+    int occColumn;
    uint8_t p = 0;
     int16_t offsetRef;
    uint8_t occRowScale;
@@ -202,7 +224,7 @@ float ExtractAlphaParametersRawPerPixel(uint16_t value )
     uint8_t accColumnScale;
     uint8_t accRemScale;
     
- 
+
     accRemScale = eeDataGetStoredInLocalEPROM(32) & 0x000F;
     accColumnScale = (eeDataGetStoredInLocalEPROM(32) & 0x00F0) >> 4;
     accRowScale = (eeDataGetStoredInLocalEPROM(32) & 0x0F00) >> 8;
@@ -375,9 +397,13 @@ if (pixelNumber == 0){//we only do this on start of page
     //sub_calc_subPage = mlx90640Frame[833];//we dont care about page data individuallly that much anymore
     sub_calc_vdd = MLX90640_GetVdd();
     sub_calc_ta = MLX90640_GetTa();
+  
     sub_calc_ta4 = SimplePow((sub_calc_ta + 273.15), (double)4);
     sub_calc_tr4 = SimplePow((tr + 273.15), (double)4);
     sub_calc_taTr = sub_calc_tr4 - (sub_calc_tr4-sub_calc_ta4)/emissivity;
+ 
+    
+    
     
     sub_calc_alphaCorrR[0] = 1 / (1 + ksTo[0] * 40);
     sub_calc_alphaCorrR[1] = 1 ;
@@ -425,6 +451,8 @@ if (pixelNumber == 0){//we only do this on start of page
 }//this is for one time per read check of data
    // for( int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
    // {
+
+   
         sub_calc_ilPattern = (pixelNumber >>5) - ((pixelNumber>>6) <<1); 
         sub_calc_chessPattern = sub_calc_ilPattern ^ (pixelNumber - ((pixelNumber/2)<<1)); 
         sub_calc_conversionPattern = (((pixelNumber + 2) >>2) - ((pixelNumber + 3) >>2) + ((pixelNumber + 1) >>2) - (pixelNumber >>2)) * (1 - 2 * sub_calc_ilPattern);
@@ -439,24 +467,25 @@ if (pixelNumber == 0){//we only do this on start of page
         }  
      
         if(sub_calc_pattern == sub_calc_pattern)// mlx90640Frame[833-768])//if frame matches current data group then process further
-        {  sub_calc_irData = RamGetStoredInLocal(pixelNumber) ;   //sub_calc_irData = mlx90640FrameCELLRAM[pixelNumber];
+        {  
+          sub_calc_irData = RamGetStoredInLocal(pixelNumber) ;   //sub_calc_irData = mlx90640FrameCELLRAM[pixelNumber];
             if(sub_calc_irData > 32767)
             {
                 sub_calc_irData = sub_calc_irData - 65536;
             }
         
+ 
 
-
-
-          
+    
             sub_calc_irData = sub_calc_irData * sub_calc_gain;
+                 
 #if NEW_METHOD ==false  //old way
             irData = irData - offset[pixelNumber]*(1 + kta[pixelNumber]*(ta - 25))*(1 + kv[pixelNumber]*(vdd - 3.3));
 #endif
 #if NEW_METHOD ==true
            sub_calc_irData = sub_calc_irData - ExtractOffsetParametersRawPerPixel(pixelNumber)*(1 + ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(sub_calc_ta - 25))*(1 + ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(sub_calc_vdd - 3.3));
 #endif
-
+ 
             
             if(sub_calc_mode !=  calibrationModeEE)
             {
@@ -472,11 +501,19 @@ if (pixelNumber == 0){//we only do this on start of page
             #if NEW_METHOD == true 
             sub_calc_alphaCompensated = (ExtractAlphaParametersRawPerPixel(pixelNumber) - tgc * cpAlpha[sub_calc_subPage])*(1 + KsTa * (sub_calc_ta - 25));    
             #endif
+
+
             sub_calc_Sx = SimplePow((double)sub_calc_alphaCompensated, (double)3) * (sub_calc_irData + sub_calc_alphaCompensated * sub_calc_taTr);
-          
-            sub_calc_Sx = sqrt((sub_calc_Sx))       * ksTo[1];
-            sub_calc_To = sqrt(sqrt(sub_calc_irData/(sub_calc_alphaCompensated * (1 - ksTo[1] * 273.15) + sub_calc_Sx) + sub_calc_taTr)) - 273.15;
-           
+
+
+            sub_calc_Sx = Q_rsqrt((sub_calc_Sx))       * ksTo[1];
+
+   
+            
+            sub_calc_To = Q_rsqrt(Q_rsqrt(sub_calc_irData/(sub_calc_alphaCompensated * (1 - ksTo[1] * 273.15) + sub_calc_Sx) + sub_calc_taTr)) - 273.15;
+ 
+
+         
             if(sub_calc_To < ct[1])
             {
                 sub_calc_range = 0;
@@ -493,10 +530,9 @@ if (pixelNumber == 0){//we only do this on start of page
             {
                 sub_calc_range = 3;            
             }      
-            
-            sub_calc_To =sqrt(sqrt(sub_calc_irData / (sub_calc_alphaCompensated * sub_calc_alphaCorrR[sub_calc_range] * (1 + ksTo[sub_calc_range] * (sub_calc_To - ct[sub_calc_range]))) + sub_calc_taTr)) - 273.15;
-            
-           
+             
+            sub_calc_To =Q_rsqrt(Q_rsqrt(sub_calc_irData / (sub_calc_alphaCompensated * sub_calc_alphaCorrR[sub_calc_range] * (1 + ksTo[sub_calc_range] * (sub_calc_To - ct[sub_calc_range]))) + sub_calc_taTr)) - 273.15;
+               
            
            return sub_calc_To;//we return value to main loop rather than do each pixel (all together)
         }
@@ -570,7 +606,130 @@ int MLX90640_GetFrameData(uint8_t slaveAddr)
     return  mlx90640Frame[833-768];    
 }
 
+float MLX90640_GetImageRawPerPixel(uint16_t pixelNumber)
+{/*
+    float vdd;
+    float ta;
+    float gain;
+    float irDataCP[2];
+    float irData;
+    float alphaCompensated;
+    uint8_t mode;
+   int8_t ilPattern;
+    int8_t chessPattern;
+    int8_t pattern;
+    int8_t conversionPattern;
+    float image;
+    uint16_t subPage;
+ */ 
+if (pixelNumber == 0){//we only do this on start of page  
+   // subPage =mlx90640Frame[833]; we dont care about sub page. we process data when it all is collected on sensor
+    sub_calc_vdd = MLX90640_GetVdd();
+    sub_calc_ta = MLX90640_GetTa();
 
+    
+//------------------------- Gain calculation -----------------------------------    
+#if NEW_METHOD !=true
+    sub_calc_gain = mlx90640Frame[778];
+#else
+    sub_calc_gain = mlx90640Frame[778-768];
+#endif
+    if(sub_calc_gain > 32767)
+    {
+        sub_calc_gain = sub_calc_gain - 65536;
+    }
+    
+    sub_calc_gain = gainEE / sub_calc_gain; 
+  
+//------------------------- Image calculation -------------------------------------    
+    sub_calc_mode = (mlx90640Frame[832-768] & 0x1000) >> 5;
+
+    sub_calc_irDataCP[0] = mlx90640Frame[776-768];  
+    sub_calc_irDataCP[1] = mlx90640Frame[808-768];    
+
+    for( int i = 0; i < 2; i++)
+    {
+        if(sub_calc_irDataCP[i] > 32767)
+        {
+            sub_calc_irDataCP[i] = sub_calc_irDataCP[i] - 65536;
+        }
+        sub_calc_irDataCP[i] = sub_calc_irDataCP[i] * sub_calc_gain;
+    }
+    sub_calc_irDataCP[0] = sub_calc_irDataCP[0] - cpOffset[0] * (1 + cpKta * (sub_calc_ta - 25)) * (1 + cpKv * (sub_calc_vdd - 3.3));
+    if( sub_calc_mode ==  calibrationModeEE)
+    {
+        sub_calc_irDataCP[1] = sub_calc_irDataCP[1] - cpOffset[1] * (1 + cpKta * (sub_calc_ta - 25)) * (1 + cpKv * (sub_calc_vdd - 3.3));
+    }
+    else
+    {
+      sub_calc_irDataCP[1] = sub_calc_irDataCP[1] - (cpOffset[1] + ilChessC[0]) * (1 + cpKta * (sub_calc_ta - 25)) * (1 + cpKv * (sub_calc_vdd - 3.3));
+    }
+
+
+    //to here data is same for every pixel
+}//this is for one time per read check of data
+
+//    for( int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
+ //   {
+        sub_calc_ilPattern = pixelNumber / 32 - (pixelNumber / 64) * 2; 
+        sub_calc_chessPattern = sub_calc_ilPattern ^ (pixelNumber - (pixelNumber/2)*2); 
+        sub_calc_conversionPattern = ((pixelNumber + 2) / 4 - (pixelNumber + 3) / 4 + (pixelNumber + 1) / 4 - pixelNumber / 4) * (1 - 2 * sub_calc_ilPattern);
+        
+        if(sub_calc_mode == 0)
+        {
+          sub_calc_pattern = sub_calc_ilPattern; 
+        }
+        else 
+        {
+          sub_calc_pattern = sub_calc_chessPattern; 
+        }
+        
+       if(sub_calc_pattern == sub_calc_pattern)  // if(sub_calc_pattern == mlx90640Frame[833]) whe change because we get full frame at a time now
+        {    
+            sub_calc_irData = RamGetStoredInLocal(pixelNumber) ;// old method--> mlx90640Frame[pixelNumber];
+            if(sub_calc_irData > 32767)
+            {
+                sub_calc_irData = sub_calc_irData - 65536;
+            }
+            sub_calc_irData = sub_calc_irData * sub_calc_gain;
+            #if NEW_METHOD ==false  //old way
+             irData = irData - offset[pixelNumber]*(1 + kta[pixelNumber]*(sub_calc_ta - 25))*(1 + kv[pixelNumber]*(vdd - 3.3));
+            #endif
+             #if NEW_METHOD ==true  //old way
+            sub_calc_irData = sub_calc_irData - ExtractOffsetParametersRawPerPixel(pixelNumber)*(1 +ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(sub_calc_ta - 25))*(1 + ExtractKtaPixelParametersRawPerPixel(pixelNumber)*(sub_calc_vdd - 3.3));
+            #endif
+            if(sub_calc_mode !=  calibrationModeEE)
+            {
+              sub_calc_irData = sub_calc_irData + ilChessC[2] * (2 * sub_calc_ilPattern - 1) - ilChessC[1] * sub_calc_conversionPattern; 
+            }
+            
+            sub_calc_irData = sub_calc_irData - tgc * sub_calc_irDataCP[sub_calc_subPage];
+            #if NEW_METHOD != true 
+            sub_calc_alphaCompensated = (sub_calc_alpha[pixelNumber] - tgc * sub_calc_cpAlpha[sub_calc_subPage])*(1 + sub_calc_KsTa * (sub_calc_ta - 25));
+            #endif
+            #if NEW_METHOD == true 
+            sub_calc_alphaCompensated = (ExtractAlphaParametersRawPerPixel(pixelNumber) - tgc * cpAlpha[sub_calc_subPage])*(1 + KsTa * (sub_calc_ta - 25));
+            #endif
+            float image =sub_calc_irData/sub_calc_alphaCompensated;
+            
+            
+            //cleans up non numbers +/- 25 deg and range of sensor we want to multiply to reduce cycles
+            //1/32768=0.00003051757  16 bit
+            //1/65536=0.00001525878  17 bit
+            //1/131072=0.00000762939 18 bit
+            //1/262144=0.00000381469 19 bit
+
+            //we normalize
+            if (Analog_resolution== 16){image=image*0.00003051757*NormalizeImageValue;}
+            if (Analog_resolution== 17){image=image*0.00001525878*NormalizeImageValue;}
+            if (Analog_resolution== 18){image=image*0.00000762939*NormalizeImageValue;}
+            if (Analog_resolution== 19){image=image*0.00000381469*NormalizeImageValue;}
+            return image+25;
+
+            //now we take from 25 deg and make it center of range depending on data
+        }
+  //  }
+}
 
 //end of low mem methods
 #endif
@@ -897,6 +1056,8 @@ void MLX90640_CalculateTo()
 //------------------------------------------------------------------------------
 
 
+//------------------------------------------------------------------------------
+
 float MLX90640_GetVdd()
 {
     float vdd;
@@ -1080,8 +1241,11 @@ void ExtractKsToParameters( )
     ct[3] = ct[2] + ct[3]*step;
     
     KsToScale = (eeDataGetStoredInLocalEPROM(63) & 0x000F) + 8;
-    KsToScale = 1 << KsToScale;
-    
+    //#if limitRangeofMath != true
+   // KsToScale = 1 << KsToScale;//this number works different on 32 bit int 
+   // #else
+    uint32_t KsToScalebig =  SimplePow(2,KsToScale );//this number works different on 32 bit int 
+   // #endif
     ksTo[0] = eeDataGetStoredInLocalEPROM(61) & 0x00FF;
     ksTo[1] = (eeDataGetStoredInLocalEPROM(61)& 0xFF00) >> 8;
     ksTo[2] = eeDataGetStoredInLocalEPROM(62) & 0x00FF;
@@ -1094,7 +1258,11 @@ void ExtractKsToParameters( )
         {
             ksTo[i] = ksTo[i] -256;
         }
-        ksTo[i] = ksTo[i] / KsToScale;
+      //  #if limitRangeofMath != true
+       // ksTo[i] = ksTo[i] /KsToScale ;;/// KsToScale;
+       // #else
+        ksTo[i] = ksTo[i] /KsToScalebig ;;/// KsToScale;
+      //  #endif
     } 
 }
 
@@ -1667,7 +1835,6 @@ int MLX90640_GetFrameData(uint8_t slaveAddr)
     
     return  mlx90640Frame[833];    
 }
-
 void MLX90640_GetImage( float *result)
 {
     float vdd;
@@ -1689,7 +1856,11 @@ void MLX90640_GetImage( float *result)
     ta = MLX90640_GetTa();
     
 //------------------------- Gain calculation -----------------------------------    
+#if NEW_METHOD !=true
     gain = mlx90640Frame[778];
+#else
+    gain = mlx90640Frame[778-768];
+#endif
     if(gain > 32767)
     {
         gain = gain - 65536;
@@ -1699,9 +1870,13 @@ void MLX90640_GetImage( float *result)
   
 //------------------------- Image calculation -------------------------------------    
     mode = (mlx90640Frame[832] & 0x1000) >> 5;
-    
+#if NEW_METHOD !=true    
     irDataCP[0] = mlx90640Frame[776];  
     irDataCP[1] = mlx90640Frame[808];
+#else
+    irDataCP[0] = mlx90640Frame[776-768];  
+    irDataCP[1] = mlx90640Frame[808-768];    
+#endif
     for( int i = 0; i < 2; i++)
     {
         if(irDataCP[i] > 32767)
@@ -1767,7 +1942,6 @@ void MLX90640_GetImage( float *result)
         }
     }
 }
-//------------------------------------------------------------------------------
 
 
 #endif
@@ -1792,4 +1966,9 @@ if (value==1){
  for (int i=0;i<768;i++){
   mlx90640To[i]= 0;
  }
+ }
+uint8_t Analog_resolutionValue(){
+return Analog_resolution;
+
+ 
  }
