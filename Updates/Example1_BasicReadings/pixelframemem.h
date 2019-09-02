@@ -10,3 +10,4 @@ uint16_t mlx90640FrameCELLRAM[768];//1668 bytes  mlx90640Frame[832] = controlReg
 #endif
 uint16_t statusRegister;//mlx90640Frame[833] these are values that we need to manage 
 uint16_t controlRegister1;//mlx90640Frame[832] 
+ 
