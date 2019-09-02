@@ -28,26 +28,31 @@
   Connect the male pins to the Teensy. The pinouts can be found here: https://www.pjrc.com/teensy/pinout.html
   Open the serial monitor at 9600 baud to see the output
 */
-//if false we use old data sets
+
 
 
 #include <Wire.h>
 
-#define DoubleResolution true //this doubels resolution output to 64x48 to make seeing objects a little easier
-#define do_system_rom_verify_check true //this verifies that data is copied using
+//here are the terminal output settings
+#define pixelmodeTrueTestModeFalse true//true outputs display image of sorts to terminal, false outputs raw sensor data in deg C
+#define DoubleResolution false //this doubels resolution output to 64x48 to make seeing objects a little easier
+#define do_system_rom_verify_check true //this verifies that data is copied using, but can be anoying for several checks after rom dump is verified. if erorrs they should still show.
+#define hzMode 4//0=0.5hz,1=1hz,2=2hz,3=4hz,4=8hz,5=16hz,6=32hz,7=64hz 
+#define adSensorResolution 3 //0=16bit,it 1=17bit, 2=18bit, 3=19b
+#define MLX90640_mirror false //this flips direction of sensor in case used in camera mode
+
+
 #include "MLX90640_API.h"
 #include "MLX90640_I2C_Driver.h"
 #include "factoryCalData.h" //we use this to verify rom values
 #include "Z_MemManagment.h"//lets us know what mem management we are using
 
 #include "i2c_Address.h"
-#define wireClockSpeed 400000 //we define here easier to set from here.800000 is fastest will work on arduino, 2mhz seems to work on teensy. not sure
+#include "ZZZ_doubleResolution.h" //this is a low memory resolution doubler. it relies on fast ram access to data.
+#define wireClockSpeed 800000 //we define here easier to set from here.800000 is fastest will work on arduino
 #define SerialBaudRate 1000000 //this is speed of serial protocol. be sure enough time is set to allow messages to be sent thru before using i2c
 #define continuousmode true//true is default when sensor is bought, however we want step mode. this is checked by the code and only written to if it is different than value here. it is here for experimentation.
-#define hzMode 4//0=0.5hz,1=1hz,2=2hz,3=4hz,4=8hz,5=16hz,6=32hz,7=64hz 
-#define adSensorResolution 3 //0=16bit,it 1=17bit, 2=18bit, 3=19b
-#define MLX90640_mirror true //this flips direction of sensor in case used in camera mode
-#define pixelmodeTrueTestModeFalse true//true outputs display image of sorts to terminal, false outputs raw sensor data in deg C
+
 #define patternModecheckerInsteadOfscanline true //this is type of scan method
 //thes are just some commands that we make sure are stored in flash instead of ram.
 void serial_mxl90460 (){Serial.print(F("MLX90640"));} //we use the defined word as a reusabel variable
@@ -60,13 +65,12 @@ void Device_is_in_mode_of(){Serial.println(F(" Device is in mode of "));}
 void reset_and_msg(){serial_Data_should_now_be_changes_msg();delay(200);serial_reset_message();delay(2000);}  //call reset
 byte status =0;//we use for status
 bool startupComplete= true;//this is used to loop or not loop
-
+char  Serialburstline [64];//this isa burst line dump that sends a line at a time.reduces overhead on serial comms
+byte SerialBurstCount=0;
 //paramsMLX90640 mlx90640;//we no longer need this as pointer and me structure changed
-#if DoubleResolution ==true
-float tempCache;//we use to up the resolution for show along x axis
-float temp1;
-#endif
+
 uint16_t wordstore[1];//used to manupuated data
+
 void setup()
 {
   Wire.begin();
@@ -93,7 +97,9 @@ void setup()
 
 while (startupComplete ){//we set to false if it passes
   for (byte i=0;i<64;i++){Serial.println();}//we clear screen in terminal in case reset.
+
  testFlashVsThermopileFlashAndCheckOtherSettings();
+ 
  delay(500);//make sure serial done
 }
 //  int status;
@@ -122,11 +128,11 @@ void loop()
 {Serial.println(F("MainLoop Init ok"));
  //reset_ram();//this resets all ram values before we store them
 #if NEW_METHOD == false
-  for (byte x = 0 ; x < 2 ; x++){ //Read both subpages and store all in ram
+  for (byte x = 0 ; x < 1 ; x++){ //Read both subpages and store all in ram
 #endif    
 #if NEW_METHOD == true
 
-  for (byte x = 0 ; x < 1 ; x++){ //Read 1 time as all data is stored on ram of sensor. so it can all be read at once
+  for (byte x = 0 ; x < 1 ; x++){ //Read sub pages data and store only refference data. we keep ram data
 #endif 
   
  
@@ -150,63 +156,37 @@ Serial.println(F("getting raw To values"));
  Serial.print("\r\n");
   }
   Serial.println("");
- for (int y = 0 ; y< 24 ; y++){
-  #if DoubleResolution ==true //this is where we double y data, buy averaging lines
-//here is where we show all thermopile cells as individual temp cells in deg C   
- for (int ydouble = 0 ; ydouble <2 ; ydouble++){//this doubles y resolution
-#endif
-  for (int x = 0 ; x < 32 ; x++)
-  {
+  #if DoubleResolution !=true //this means we run at sensor res
+
+ for (int y = 0 ; y< 24 ; y++){for (int x = 0 ; x < 32 ; x++){
+ #else 
+  for (int y = 0 ; y< 48 ; y++){for (int x = 0 ; x < 64 ; x++){
+    #endif
+
 //here is where we show a sort of image to serial terminal display    
 #if pixelmodeTrueTestModeFalse ==  true
 // Serial.print("|");
    // Serial.print(x);
    // Serial.print(": ");
+    #if DoubleResolution !=true 
    float temp=Readmlx90640To(x+y*32);
-#if DoubleResolution ==true
-   if (ydouble==0){//this is raw data 
-   // temp=(Readmlx90640To(x+y*32));//this is redundant and causes more reads than needed
-    temp1=(tempCache+temp)*0.5;//we use old value 
-   }
-
-      if (ydouble==1){//this we average ram between data for doubling y res
-        if (y<31){ temp=(Readmlx90640To(x+y*32)+Readmlx90640To(x+(y+1)*32))*0.5;}
-        else{temp=(Readmlx90640To(x+y*32));}//we cant go above 768. 
-          temp1=(tempCache+temp)*0.5;//we use old value 
-   }
-   //first read 
-    if (temp1<26){Serial.print(". ");}
-    if ((temp1>26) & (temp1<29)){Serial.print(".-");}
-   if ((temp1>29) & (temp1<30)){Serial.print(".+");}
-   if ((temp1>30) & (temp1<31)){Serial.print(".X");}
-   if ((temp1>31) & (temp1<32)){Serial.print(".O");}
-   if ((temp1>32) & (temp1<33)){Serial.print(".0");}
-   if ((temp1>33) & (temp1<35)){Serial.print(".#");}
-   if (temp1>35){Serial.print(".@");}
-    tempCache=temp;//we use to average out res data
-//second read
+#else
+   float temp=DoubleResolutionValue(x,y);//we return double we read x,y directly not mem location 
 #endif
-   if (temp<26){Serial.print(". ");}
-    if ((temp>26) & (temp<29)){Serial.print(".-");}
-   if ((temp>29) & (temp<30)){Serial.print(".+");}
-   if ((temp>30) & (temp<31)){Serial.print(".X");}
-   if ((temp>31) & (temp<32)){Serial.print(".O");}
-   if ((temp>32) & (temp<33)){Serial.print(".0");}
-   if ((temp>33) & (temp<35)){Serial.print(".#");}
-   if (temp>35){Serial.print(".@");}
+
+   if (temp<26){Serial.print(F(". "));}
+    if ((temp>26) & (temp<29)){Serial.print(F(".-"));}
+   if ((temp>29) & (temp<30)){Serial.print(F(".+"));}
+   if ((temp>30) & (temp<31)){Serial.print(F(".X"));}
+   if ((temp>31) & (temp<32)){Serial.print(F(".O"));}
+   if ((temp>32) & (temp<33)){Serial.print(F(".0"));}
+   if ((temp>33) & (temp<35)){Serial.print(F(".#"));}
+   if (temp>35){Serial.print(F(".@"));}
 
     //Serial.print("C");
    // Serial.println();
   
 #endif
-
-
-
-
-
-
-
-
 
 #if pixelmodeTrueTestModeFalse !=  true
  Serial.print("|");
@@ -222,9 +202,8 @@ Serial.println(F("getting raw To values"));
   
  Serial.println();
  // delay(1000);
-   #if DoubleResolution ==true //this is where we double y data, buy averaging lines
-//here is where we show all thermopile cells as individual temp cells in deg C   
- };//this ends loop if y res doubled
+#if customSmallCacheForMemReads== true
+cachloadram();//we get mem cached!
 #endif
 }
 
@@ -257,6 +236,7 @@ MLX90640_SetInterleavedMode(MLX90640_address);//set scan line mode read
 //float ta ;//we use 4 corner sensors to determin chip temp at start up, then we take lowest pixel on screen and use that.
 
 //we check flash values
+ # if do_system_rom_verify_check == true  //this verifies rom dump.
     for (int i=0;i<832;i++){//gets 0x2400 (9216) to 0x273f (10047)
 MLX90640_I2CRead(MLX90640_address, 0x2400+i, 1,wordstore);
 delay(1);
@@ -266,6 +246,7 @@ if ((i&15)==15){Serial.print(F(" register location:"));Serial.print(i+0x2400-15,
 delay(2);
     }//next
     Serial.println(F("data above is from epprom. it will be used later on for calibration"));
+#endif
 Serial.println(F("We will now test the eeprom of the sensor with the flash data. if it does not match it will error but keep working using the included settings."));
 
     for (int i=0;i<832;i++){
@@ -405,3 +386,13 @@ startupComplete=false;//we completed, so we no longer need to do this again
 
 
 }
+
+//we ad this to resolve clock being to fast for i2c on arduino
+#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1284__) || defined(__AVR_ATmega1284P__) || defined(__AVR_ATmega644__) || defined(__AVR_ATmega644A__) || defined(__AVR_ATmega644P__) || defined(__AVR_ATmega644PA__) ||defined(__AVR_ATmega328P__) 
+#if wireClockSpeed > 800000 //above this will not work in testing so we want to flag it
+#define ErrorObj("this processor can not reliably do over 800khz, change wireClockSpeed in sketch to no greater than 800000");
+#endif
+#endif
+#if wireClockSpeed > 800000
+#define ErrorObj("the MLX90640 sensor only is in spec to 1mhz. look at wireClockSPeed and make changes. going over 1mhz can damage sensor");
+#endif 
