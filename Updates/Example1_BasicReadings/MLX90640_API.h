@@ -30,6 +30,7 @@
     float MLX90640_GetVdd();
     float MLX90640_GetTa();
     void MLX90640_GetImage(float *result);
+    float MLX90640_GetImageRawPerPixel(uint16_t pixelNumber);//used for new_method
     void MLX90640_CalculateTo();
     float MLX90640_CalculateToRawPerPixel(uint16_t pixelNumber );
     int MLX90640_SetResolution(uint8_t slaveAddr, uint8_t resolution);
@@ -51,4 +52,6 @@
   uint16_t readmlx90640To(uint16_t value);
   void SetSubPageForFrameSample(uint16_t value);
   void  reset_ram();
+uint8_t Analog_resolutionValue();
+void cachloadram();//used temp to learn about caching of data
 #endif
