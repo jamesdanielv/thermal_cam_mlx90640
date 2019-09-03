@@ -34,8 +34,8 @@
 #include <Wire.h>
 
 //here are the terminal output settings
-#define pixelmodeTrueTestModeFalse true//true outputs display image of sorts to terminal, false outputs raw sensor data in deg C
-#define DoubleResolution false //this doubels resolution output to 64x48 to make seeing objects a little easier
+#define pixelmodeTrueTestModeFalse false//true outputs display image of sorts to terminal, false outputs raw sensor data in deg C
+#define DoubleResolution false//this doubels resolution output to 64x48 to make seeing objects a little easier
 #define do_system_rom_verify_check true //this verifies that data is copied using, but can be anoying for several checks after rom dump is verified. if erorrs they should still show.
 #define hzMode 4//0=0.5hz,1=1hz,2=2hz,3=4hz,4=8hz,5=16hz,6=32hz,7=64hz 
 #define adSensorResolution 3 //0=16bit,it 1=17bit, 2=18bit, 3=19b
@@ -50,7 +50,7 @@
 #include "i2c_Address.h"
 #include "ZZZ_doubleResolution.h" //this is a low memory resolution doubler. it relies on fast ram access to data.
 #define wireClockSpeed 800000 //we define here easier to set from here.800000 is fastest will work on arduino
-#define SerialBaudRate 1000000 //this is speed of serial protocol. be sure enough time is set to allow messages to be sent thru before using i2c
+#define SerialBaudRate 1000000  //this is speed of serial protocol. be sure enough time is set to allow messages to be sent thru before using i2c
 #define continuousmode true//true is default when sensor is bought, however we want step mode. this is checked by the code and only written to if it is different than value here. it is here for experimentation.
 
 #define patternModecheckerInsteadOfscanline true //this is type of scan method
@@ -64,9 +64,7 @@ void setting_is_different(){Serial.println(F("setting is different in firmware. 
 void Device_is_in_mode_of(){Serial.println(F(" Device is in mode of "));}
 void reset_and_msg(){serial_Data_should_now_be_changes_msg();delay(200);serial_reset_message();delay(2000);}  //call reset
 byte status =0;//we use for status
-bool startupComplete= true;//this is used to loop or not loop
-char  Serialburstline [64];//this isa burst line dump that sends a line at a time.reduces overhead on serial comms
-byte SerialBurstCount=0;
+bool startupComplete=true;
 //paramsMLX90640 mlx90640;//we no longer need this as pointer and me structure changed
 
 uint16_t wordstore[1];//used to manupuated data
@@ -124,6 +122,7 @@ void printBits(byte myByte){
        Serial.print('0');
  }
 }
+byte testtoggle=0;
 void loop()
 {Serial.println(F("MainLoop Init ok"));
  //reset_ram();//this resets all ram values before we store them
@@ -136,7 +135,7 @@ void loop()
 #endif 
   
  
-    int status = MLX90640_GetFrameData(MLX90640_address);
+    int status = MLX90640_GetFrameData(MLX90640_address);//this is capture
 
     if (status < 0)
     {
@@ -147,11 +146,15 @@ InitSensor();//same code as old just managed in mlx90640_api now. we do before f
 
 Serial.println(F("getting raw To values"));
 #if NEW_METHOD == false //this means using old method  
-    MLX90640_CalculateTo();
+    MLX90640_CalculateTo();//this is data pull from 
 #endif//new method does not need everything all at once! we get it from mem cal
   }
  
-  delay(200);
+delay(100);
+  #if customSmallCacheForMemReads== true
+cachloadram();//we get mem cached!
+#endif
+delay(100);
   for (int y = 0 ; y< 60 ; y++){//we scroll for new data
  Serial.print("\r\n");
   }
@@ -185,7 +188,7 @@ Serial.println(F("getting raw To values"));
 
     //Serial.print("C");
    // Serial.println();
-  
+
 #endif
 
 #if pixelmodeTrueTestModeFalse !=  true
@@ -202,9 +205,7 @@ Serial.println(F("getting raw To values"));
   
  Serial.println();
  // delay(1000);
-#if customSmallCacheForMemReads== true
-cachloadram();//we get mem cached!
-#endif
+
 }
 
 
