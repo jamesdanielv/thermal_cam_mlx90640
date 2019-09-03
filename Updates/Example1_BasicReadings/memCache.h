@@ -15,7 +15,8 @@ uint8_t Analog_resolution;//this is cal at init() function
 
 #if    customSmallCacheForMemReads == true
 uint8_t linecache=255;//we store current y line for caching. 255 for us means it is empty. if it is 255, first read will fill cache completely
-uint16_t SmallMemCache_i2c_efficency[768];//this evetuanolly will use  128 bytes extra cach for improved performance
+uint16_t SmallMemCache_i2c_efficency[32];//this evetuanolly will use  128 bytes extra cach for improved performance
+
 #endif
 uint16_t worddata[32]; //used for data manipulation 1 word value or up to an entire row 32
         int16_t kVdd;
