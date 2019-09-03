@@ -34,8 +34,8 @@
 #include <Wire.h>
 
 //here are the terminal output settings
-#define pixelmodeTrueTestModeFalse false//true outputs display image of sorts to terminal, false outputs raw sensor data in deg C
-#define DoubleResolution false//this doubels resolution output to 64x48 to make seeing objects a little easier
+#define pixelmodeTrueTestModeFalse true//true outputs display image of sorts to terminal, false outputs raw sensor data in deg C
+#define DoubleResolution true//this doubels resolution output to 64x48 to make seeing objects a little easier
 #define do_system_rom_verify_check true //this verifies that data is copied using, but can be anoying for several checks after rom dump is verified. if erorrs they should still show.
 #define hzMode 4//0=0.5hz,1=1hz,2=2hz,3=4hz,4=8hz,5=16hz,6=32hz,7=64hz 
 #define adSensorResolution 3 //0=16bit,it 1=17bit, 2=18bit, 3=19b
