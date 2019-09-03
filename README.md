@@ -1,7 +1,14 @@
 # thermal_cam_mlx90640
 all i ask is you give credit where credit do. to MIT, to original authors and to me for my time and effort here. you might be doing the next big thing and the work here might help or save you time.
 
+in /updates folder is working code that calibrates to using arduino 8 bit micro controllers. 
 
+also code exists that doubles output resolution. it is a wrappper that does interpolations math and data caching so all you 
+
+need to do is assume 64,48 and it will take care of resolution details automatically.
+
+ float temp=DoubleResolutionValue(x,y);
+ 
 //all of these are still a work in progress, however there is fully functional code in the /updates folder. there is code that works calibrated for the arudino, and it has been verfied to the original test code. it uses about 1k on 8bit processors. also there are some cache methods being implimented. so far only doubleResolution uses a 256 byte cache.
 
 look in the /updates folder for code. this code will be moved into the main directory sometime after end of sept.
