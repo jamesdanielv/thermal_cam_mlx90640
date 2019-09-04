@@ -9,13 +9,17 @@ the code inside should take one row of data and output it to terminal. if this w
 
 then look at fullsensorreadToterminal.zip it should output entire sensor to asci art. 
 
-these are not calibrated results, just tests to verify it is working, and the orientation. after these tests are run and it seems to be working, you will want to run sketch in getEEpromDump.zip
+these are not calibrated results, just tests to verify it is working, and the orientation. after these tests are run and it
+
+seems to be working, you will want to run sketch in getEEpromDump.zip
 
 this will allow extraction of calibration data from sensor .  cut and paste this data into a text document somewhere.
 
 now we want to run calibrated program.  go to /updates folder and load the sketch Example1_BasicReadings.ino
 
-go to tab that loads factoryCalData.h and replace table values with calibration data from sensor that you go from cut and paste of getEEpromDump.zip
+go to tab that loads factoryCalData.h and replace table values with calibration data from sensor that you go from cut and
+
+paste of getEEpromDump.zip
 
 load sketch and it should output ascii graphics map of camera into terminal.
 
@@ -24,6 +28,7 @@ if you want to see raw values or have values at normal resolution
 change :
 
 pixelmodeTrueTestModeFalse true to false. it will not do graphics and it will output raw data
+
 define DoubleResolution true to false. this will output data at 32x24 resolution.
 
 if you want to design code that reads the sensor custom
@@ -34,16 +39,32 @@ Readmlx90640To( ); example float temp=Readmlx90640To( x+y*32);
 
 DoubleResolutionValue(x,y);example: float temp=DoubleResolutionValue(x,y);
 
-DoubleResoluiton has special caching techniques for data. it uses 256 more bytes, so without it the code is about 750 bytes of ram at compile time.
+DoubleResoluiton has special caching techniques for data. it uses 256 more bytes, so without it the code is about 750 bytes
 
-performance overall will improve as i figure out ways to optimize the math, and cache the data for the results, and make better use of the i2c bandwidth.
+of ram at compile time.
 
-for example when i first wrote the double resolution function it needed to read memory 5 times, and required several reads from the sensor. now it only requires 1 read per cell location and works about 5 times faster than without the caching. 
+performance overall will improve as i figure out ways to optimize the math, and cache the data for the results, and make
 
-if anything needs to be clarified further please let me know. i want this to be as clear and simple as possible. also code is a mess currently because it retains compatibility with original code so i can test features and functions. for example if the NEW_METHOD is set to false, it will again use about 20k of ram.
+better use of the i2c bandwidth.
+
+for example when i first wrote the double resolution function it needed to read memory 5 times, and required several reads
+
+from the sensor. now it only requires 1 read per cell location and works about 5 times faster than without the caching. 
+
+if anything needs to be clarified further please let me know. i want this to be as clear and simple as possible. also code
+
+is a mess currently because it retains compatibility with original code so i can test features and functions. for example if
+
+the NEW_METHOD is set to false, it will again use about 20k of ram.
 
 Z_MemManagment.h handles the methods of how the memory is managed and process techniques
 
 factoryCalData.h stores values in a table copied from memory of sensor
 
-ZZZ_doubleResolution.h has the function that doubles resolution and has caching for speed as reading memory from cells is the slowest part of the process, next to the math calculations. the irony is the better arm processors that use the old method of memory management spend all that extra processing horsepower in a while loop waiting for capture of sensor to be complete. 
+ZZZ_doubleResolution.h has the function that doubles resolution and has caching for speed as reading memory from cells is
+
+the slowest part of the process, next to the math calculations. the irony is the better arm processors that use the old
+
+method of memory management spend all that extra processing horsepower in a while loop waiting for capture of sensor to be
+
+complete. 
