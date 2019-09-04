@@ -67,4 +67,4 @@ the slowest part of the process, next to the math calculations. the irony is the
 
 method of memory management spend all that extra processing horsepower in a while loop waiting for capture of sensor to be
 
-complete. 
+complete.  
