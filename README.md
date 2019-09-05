@@ -1,5 +1,5 @@
 # thermal_cam_mlx90640
-all i ask is you give credit where credit do. to MIT, to original authors and to me for my time and effort here. you might be doing the next big thing and the work here might help or save you time.
+all i ask is you give credit where credit do. to MIT, melexis,and to original authors and to me for my time and effort here. you might be doing the next big thing and the work here might help or save you time.
 
 in /updates folder is working code that calibrates to using arduino 8 bit micro controllers. 
 
