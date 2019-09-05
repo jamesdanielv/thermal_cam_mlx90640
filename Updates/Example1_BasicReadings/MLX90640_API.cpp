@@ -19,7 +19,9 @@
 #include "factoryCalData.h"
 #include "MLX90640_I2C_Driver.h"
 #include "MLX90640_API.h"
-//#include <math.h> //no longer needed saves 5k of rom
+#if USE_FAST_SQUARERT_METHOD == false
+#include <math.h> //no longer needed saves 5k of rom
+#endif
 #include "i2c_Address.h" 
 #include "memCache.h"
 #include "pixelframemem.h"
