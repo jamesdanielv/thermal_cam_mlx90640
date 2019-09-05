@@ -1,6 +1,10 @@
 here are some instructions. a faq page will be added to github once i look thru some of the questions
 download code here:
 
+be sure that this is the only device hooked up to sensor. if there is another device that is acting as master then this setup here will not work. only 1 master can be active at a time on i2c bus.
+
+check the voltage wiring. the sensor must be at 3.3v, never 5v. the i2c pins are the only pins that are 5v compliant.
+
 https://github.com/jamesdanielv/thermal_cam_mlx90640
 
 it should contain a file called MLX906040_example32ataTime.zip
