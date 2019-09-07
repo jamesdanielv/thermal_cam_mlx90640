@@ -29,7 +29,7 @@
   Open the serial monitor at 9600 baud to see the output
 */
 
-
+//change  Replace_detailed_calc_with_image_data true to show faster to output image data without To calculations. it is in Z_memManagment.
 
 #include <Wire.h>
 
@@ -37,11 +37,11 @@
 #define pixelmodeTrueTestModeFalse true//true outputs display image of sorts to terminal, false outputs raw sensor data in deg C
 #define DoubleResolution true//this doubels resolution output to 64x48 to make seeing objects a little easier
 #define do_system_rom_verify_check true //this verifies that data is copied using, but can be anoying for several checks after rom dump is verified. if erorrs they should still show.
-#define hzMode 4//0=0.5hz,1=1hz,2=2hz,3=4hz,4=8hz,5=16hz,6=32hz,7=64hz 
+#define hzMode 3//0=0.5hz,1=1hz,2=2hz,3=4hz,4=8hz,5=16hz,6=32hz,7=64hz 
 #define adSensorResolution 3 //0=16bit,it 1=17bit, 2=18bit, 3=19b
 #define MLX90640_mirror false //this flips direction of sensor in case used in camera mode
-
-
+#define troubleshoot_optimize false //if true frames show slower and output processing time per frame
+#define serialbuffermode true //this is to test a serial of 128 bytes
 #include "MLX90640_API.h"
 #include "MLX90640_I2C_Driver.h"
 #include "factoryCalData.h" //we use this to verify rom values
@@ -54,6 +54,10 @@
 #define continuousmode true//true is default when sensor is bought, however we want step mode. this is checked by the code and only written to if it is different than value here. it is here for experimentation.
 
 #define patternModecheckerInsteadOfscanline true //this is type of scan method
+#if serialbuffermode == true
+char SerialBUffer[64];// this is serial buffer so we can load up the buffer routine
+uint8_t SBC =0;//this is Serial buffer count
+#endif
 //thes are just some commands that we make sure are stored in flash instead of ram.
 void serial_mxl90460 (){Serial.print(F("MLX90640"));} //we use the defined word as a reusabel variable
 void serial_reset_message(){Serial.println(F("making changes to firmware. if nothing happens in 5-10 seconds reboot chip"));delay(5000);return;}
@@ -123,6 +127,10 @@ void printBits(byte myByte){
  }
 }
 byte testtoggle=0;
+#if troubleshoot_optimize == true 
+uint32_t  delaycount;//used to troubleshoot math timing
+float results_testing; // for test results calc
+#endif
 void loop()
 {Serial.println(F("MainLoop Init ok"));
  //reset_ram();//this resets all ram values before we store them
@@ -149,21 +157,29 @@ Serial.println(F("getting raw To values"));
     MLX90640_CalculateTo();//this is data pull from 
 #endif//new method does not need everything all at once! we get it from mem cal
   }
- 
-delay(100);
-  #if customSmallCacheForMemReads== true
-cachloadram();//we get mem cached!
+  #if troubleshoot_optimize == true //this is just used to test how long a frame takes to process
+Serial.print(F("time it takers per screen"));Serial.println(delaycount);
+
+delay(1000);//this delay is only so we can see time it takes frame to process in troubleshooting only
 #endif
+delay(100);
+
 delay(100);
   for (int y = 0 ; y< 60 ; y++){//we scroll for new data
  Serial.print("\r\n");
   }
   Serial.println("");
+
+  
+ 
+#if troubleshoot_optimize == true
+delaycount=micros();//we start timer for troubleshooting performance. normally this is not used
+#endif
   #if DoubleResolution !=true //this means we run at sensor res
 
- for (int y = 0 ; y< 24 ; y++){for (int x = 0 ; x < 32 ; x++){
+ for (uint16_t  y = 0 ; y< 24 ; y++){for (uint16_t x = 0 ; x < 32 ; x++){//this needs to be 16bit because the number it processes is above 255
  #else 
-  for (int y = 0 ; y< 48 ; y++){for (int x = 0 ; x < 64 ; x++){
+  for (uint8_t y = 0 ; y< 48 ; y++){for (uint8_t x = 0 ; x < 64 ; x++){
     #endif
 
 //here is where we show a sort of image to serial terminal display    
@@ -171,21 +187,32 @@ delay(100);
 // Serial.print("|");
    // Serial.print(x);
    // Serial.print(": ");
-    #if DoubleResolution !=true 
-   float temp=Readmlx90640To(x+y*32);
+    #if DoubleResolution !=true //32=100000
+     uint8_t temp=Readmlx90640To(x+(y<<5));//since y is unsigned byte we can shift bits for multiply
 #else
-   float temp=DoubleResolutionValue(x,y);//we return double we read x,y directly not mem location 
+   uint8_t temp=DoubleResolutionValue(x,y);//we return double we read x,y directly not mem location 
 #endif
 
-   if (temp<26){Serial.print(F(". "));}
-    if ((temp>26) & (temp<29)){Serial.print(F(".-"));}
-   if ((temp>29) & (temp<30)){Serial.print(F(".+"));}
-   if ((temp>30) & (temp<31)){Serial.print(F(".X"));}
-   if ((temp>31) & (temp<32)){Serial.print(F(".O"));}
-   if ((temp>32) & (temp<33)){Serial.print(F(".0"));}
-   if ((temp>33) & (temp<35)){Serial.print(F(".#"));}
-   if (temp>35){Serial.print(F(".@"));}
-
+   #if serialbuffermode !=true
+   if (temp< 26) {Serial.print(F(". "));}
+   if ((temp>25) & (temp<29)) {Serial.print(F(".-"));}
+   if ((temp>28) & (temp<30)) {Serial.print(F(".+"));}
+   if ((temp>29) & (temp<31)) {Serial.print(F(".X"));}
+   if ((temp>30) & (temp<32)) {Serial.print(F(".O"));}
+   if ((temp>31) & (temp<33)) {Serial.print(F(".0"));}
+   if ((temp>32) & (temp<36)) {Serial.print(F(".#"));} 
+   if (temp> 35) {Serial.print(F(".@"));}
+ 
+   #else
+   if (temp<26){SerialBUffer[SBC]=32;SBC++;}
+   if ((temp>25) & (temp<29)){SerialBUffer[SBC]=45;SBC++;}
+   if ((temp>28) & (temp<30)){SerialBUffer[SBC]=43;SBC++;}
+   if ((temp>29) & (temp<31)){SerialBUffer[SBC]=88;SBC++;}
+   if ((temp>30) & (temp<32)){SerialBUffer[SBC]=79;SBC++;}
+   if ((temp>31) & (temp<33)){SerialBUffer[SBC]=48;SBC++;}
+   if ((temp>32) & (temp<36)){SerialBUffer[SBC]=35;SBC++;}
+   if (temp>35){SerialBUffer[SBC]=64;SBC++;}
+   #endif
     //Serial.print("C");
    // Serial.println();
 
@@ -200,15 +227,37 @@ delay(100);
     Serial.print("C");
 
 #endif
-  }
+  }//end of line
+  #if serialbuffermode !=true
    Serial.print(":");
   
  Serial.println();
+#else
+
+while (SBC !=0){//while instead of for loop has shorter jmp routine
+Serial.write(46);
+Serial.write(SerialBUffer[64-SBC]);
+SBC--;//we get it in a while loop and return it at zero!
+}
+
+Serial.println(":");//we do this beacuse it is the same as write manually.
+
+
+
+
+
+ #endif
  // delay(1000);
 
 }
-
-
+#if troubleshoot_optimize == true
+delaycount=micros()-delaycount;//we stop timer. this normally is not used, only when we are trying to optimize
+Serial.print("alphaScale:");Serial.println(alphaScale_testing_results());
+Serial.print("kvScale:");Serial.println(kvScale_testing_results());
+Serial.print("ktaScale1:");Serial.println(ktaScale1_testing_results());
+Serial.print("gain:");Serial.println(gainEE_testing_results());
+Serial.print("last_pixelTemp=");Serial.println(DoubleResolutionValue(48,63));
+#endif
 }
 
 //Returns true if the MLX90640 is detected on the I2C bus
