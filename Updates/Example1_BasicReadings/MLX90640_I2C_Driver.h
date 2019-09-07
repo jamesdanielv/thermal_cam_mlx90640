@@ -14,102 +14,40 @@
    limitations under the License.
 
 */
+#ifndef _MLX90640_I2C_Driver_H_
+#define _MLX90640_I2C_Driver_H_
 
+#include <stdint.h>
+
+//Define the size of the I2C buffer based on the platform the user has
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
+
+//I2C_BUFFER_LENGTH is defined in Wire.H
+#define I2C_BUFFER_LENGTH BUFFER_LENGTH
+
+#elif defined(__SAMD21G18A__)
+
+//SAMD21 uses RingBuffer.h
+#define I2C_BUFFER_LENGTH SERIAL_BUFFER_SIZE
+
+#elif __MK20DX256__
+//Teensy
+
+#elif ARDUINO_ARCH_ESP32
+//ESP32 based platforms
+
+#else
+
+//The catch-all default is 32
 #define I2C_BUFFER_LENGTH 32
 
-#include <Wire.h>
-
-#include "MLX90640_I2C_Driver.h"
-
-void MLX90640_I2CInit()
-{
-
-}
-
-//Read a number of words from startAddress. Store into Data array.
-//Returns 0 if successful, -1 if error
+#endif
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 
-
-
-
-
-//Set I2C Freq, in kHz
-//MLX90640_I2CFreqSet(1000) sets frequency to 1MHz
-void MLX90640_I2CFreqSet(int freq)
-{
-  //i2c.frequency(1000 * freq);
-  Wire.setClock((long)1000 * freq);
-}
-
-int MLX90640_I2CRead(uint8_t _deviceAddress, unsigned int startAddress, unsigned int nWordsRead, uint16_t *data)
-{
-
-  //Caller passes number of 'unsigned ints to read', increase this to 'bytes to read'
-  uint16_t bytesRemaining = nWordsRead * 2;
-
-  //It doesn't look like sequential read works. Do we need to re-issue the address command each time?
-
-  uint16_t dataSpot = 0; //Start at beginning of array
-
-  //Setup a series of chunked I2C_BUFFER_LENGTH byte reads
-  while (bytesRemaining > 0)
-  {
-    Wire.beginTransmission(_deviceAddress);
-    Wire.write(startAddress >> 8); //MSB
-    Wire.write(startAddress & 0xFF); //LSB
-    if (Wire.endTransmission(false) != 0) //Do not release bus
-    {
-//      Serial.println("No ack read");
-      return (0); //Sensor did not ACK
-    }
-
-    uint16_t numberOfBytesToRead = bytesRemaining;
-    if (numberOfBytesToRead > I2C_BUFFER_LENGTH) numberOfBytesToRead = I2C_BUFFER_LENGTH;
-
-    Wire.requestFrom((uint8_t)_deviceAddress, numberOfBytesToRead);
-    if (Wire.available())
-    {
-      for (uint16_t x = 0 ; x < numberOfBytesToRead / 2; x++)
-      {
-        //Store data into array
-        data[dataSpot] = Wire.read() << 8; //MSB
-        data[dataSpot] |= Wire.read(); //LSB
-
-        dataSpot++;
-      }
-    }
-
-    bytesRemaining -= numberOfBytesToRead;
-
-    startAddress += numberOfBytesToRead / 2;
-  }
-
-  return (0); //Success
-}
-
-//Write two bytes to a two byte address
-int MLX90640_I2CWrite(uint8_t _deviceAddress, unsigned int writeAddress, uint16_t data)
-{
-  Wire.beginTransmission((uint8_t)_deviceAddress);
-  Wire.write(writeAddress >> 8); //MSB
-  Wire.write(writeAddress & 0xFF); //LSB
-  Wire.write(data >> 8); //MSB
-  Wire.write(data & 0xFF); //LSB
-  if (Wire.endTransmission() != 0)
-  {
-    //Sensor did not ACK
-//    Serial.println("Error: Sensor did not ack");
-    return (-1);
-  }
-
-  uint16_t dataCheck;
-  MLX90640_I2CRead(_deviceAddress, writeAddress, 1, &dataCheck);
-  if (dataCheck != data)
-  {
-    //Serial.println("The write request didn't stick");
-    return -2;
-  }
-
-  return (0); //Success
-}
+void MLX90640_I2CInit(void);
+int MLX90640_I2CRead(uint8_t slaveAddr, unsigned int startAddress, unsigned int nWordsRead, uint16_t *data);
+int MLX90640_I2CWrite(uint8_t slaveAddr, unsigned int writeAddress, uint16_t data);
+void MLX90640_I2CFreqSet(int freq);
+#endif
