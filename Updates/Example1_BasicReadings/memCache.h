@@ -4,19 +4,26 @@
 #ifndef mydatacach_
 #define mydatacach_
 #define TA_SHIFT 8 //Default shift for MLX90640 in open air
-
+float sub_calc_ta_MINUS_25;//this value is used alot
 uint8_t Analog_resolution;//this is cal at init() function
     float vdd ;
     float Ta; 
 
     float tr; 
     float emissivity; 
+    float emissivityInverted; //this is 1/emissivity in init() code. it makes math simpler
     //we place non floats above floats so we can switch float methods easier
-
-#if    customSmallCacheForMemReads == true
+#if MathreturnCacheAlorithum == true
+float SmallMathCache[16];//we store last 16 solved for values
+uint8_t SmallMathCachepointer[16]; //we need to know what the part of original problem was
+#endif
+#if customSmallCacheForMemReads == true
 uint8_t linecache=255;//we store current y line for caching. 255 for us means it is empty. if it is 255, first read will fill cache completely
-uint16_t SmallMemCache_i2c_efficency[32];//this evetuanolly will use  128 bytes extra cach for improved performance
+uint16_t SmallMemCache_i2c_efficency[64];//this evetuanolly will use  128 bytes extra cach for improved performance
+#endif
 
+#if NoiseFiterActive == true
+uint16_t Noisepassfilter=0;
 #endif
 uint16_t worddata[32]; //used for data manipulation 1 word value or up to an entire row 32
         int16_t kVdd;
