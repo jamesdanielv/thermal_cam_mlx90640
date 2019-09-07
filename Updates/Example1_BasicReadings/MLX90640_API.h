@@ -54,4 +54,8 @@
   void  reset_ram();
 uint8_t Analog_resolutionValue();
 void cachloadram();//used temp to learn about caching of data
+float alphaScale_testing_results();
+float kvScale_testing_results();
+float ktaScale1_testing_results();
+float gainEE_testing_results();
 #endif
