@@ -41,7 +41,7 @@
 #define adSensorResolution 3 //0=16bit,it 1=17bit, 2=18bit, 3=19b
 #define MLX90640_mirror false //this flips direction of sensor in case used in camera mode
 #define troubleshoot_optimize false //if true frames show slower and output processing time per frame
-#define serialbuffermode true //this is to test a serial of 128 bytes
+#define serialbuffermode false //this is to test a serial of 128 bytes
 #include "MLX90640_API.h"
 #include "MLX90640_I2C_Driver.h"
 #include "factoryCalData.h" //we use this to verify rom values
