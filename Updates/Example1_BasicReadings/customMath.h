@@ -3,7 +3,7 @@
 //this takes half the time if it is a table. so it will switch to that.
 
 const float inverse_math[] PROGMEM = { 
-0,
+1,
 0.5,
 0.25,
 0.125,
@@ -69,7 +69,7 @@ const float inverse_math[] PROGMEM = {
 1.0842021724855044e-19,
 };
 const float power_of2table[] PROGMEM = { 
-0,
+1,
 2,
 4,
 8,
