@@ -602,7 +602,7 @@ float cachedForArea= (1 + cpKta * (sub_calc_ta_MINUS_25)) * (1 + cpKv * (sub_cal
             sub_calc_To =    Q_rsqrt(sub_calc_To);
            sub_calc_To =Q_rsqrt(sub_calc_To);
            sub_calc_To =sub_calc_To - 273.15;
-           return sub_calc_To- TA_SHIFT;//we return value to main loop rather than do each pixel (all together)
+           return sub_calc_To;//we return value to main loop rather than do each pixel (all together)
         }
    // }
 }
