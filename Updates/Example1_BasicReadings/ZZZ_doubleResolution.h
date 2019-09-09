@@ -1,5 +1,6 @@
 //ZZZ_ heading just keeps this showing towards the right of tabs
 #define nonfloatReturnNumbers true//if this is false it is more accurate. reduces buffer and speeds up output to serial display
+#define center_data_filter true //this is like a gain adjust. if less than half of data in range it adds more, if more than half it lowers
 //this is a small process that does not use much memory and increases resolution of data in
 // however it requires fast ram reads of data in order to not store its own table
 //it also requires modification of main structure so it can read data
@@ -13,6 +14,9 @@
 //we use below as cache. we only update information 1/4 of time
 //we need a line cache of 32 values to improve performance
 //float DataCache[XresolutionOriginal];//this uses a small amount of cache
+#if center_data_filter == true
+uint16_t add_this_much;
+#endif
 uint8_t bufferlineNumber =0;//this is a reference to y lines. x line is cached. and previous x line cached. 
 
 #if nonfloatReturnNumbers != true
@@ -49,42 +53,46 @@ uint8_t DoubleResolutionValue(uint8_t XatNewresolution, uint8_t YatNewresolution
   bufferlineNumber=pix_Y;} //we read 2 lines at start. also we set buffer to same line number
 //here is predictive loading. if y is different, we do different things. if y is different, we determin if y is incremental or further away. if further away we cache 64 values
 if (bufferlineNumber !=pix_Y){//this means we have a cache miss. to make it pull data better we only get a large pull at a time.
-  
+//cache is only loaded on even lines.
   for (byte i = 0; i <XresolutionOriginal;i++) {prebufferCache[i]= CurrentbufferCache[i];CurrentbufferCache[i]=(Readmlx90640To(i+pix_Y*XresolutionOriginal+XresolutionOriginal));};
    bufferlineNumber=pix_Y;  }
-if (YatNewresolution<2){//if first two lines, we don't pull data. this is because there is no getting data below line zero
-   #if nonfloatReturnNumbers != true
+
+   //we have taken care of pre caching data to reuse.
+   #if nonfloatReturnNumbers != true   
+if (YatNewresolution<47){//if on first line we need to pull new data in 
 if (pix_x_is_it_odd==1 ){ReturnCache=(prebufferCache[pix_X] + prebufferCache[pix_X-1])*0.5;}
-                                        else{ReturnCache=prebufferCache[pix_X];}//this is first and second line
+                                        else{ReturnCache=prebufferCache[pix_X];}
                         }//1st 2 lines are done here. 
 #endif
-   #if nonfloatReturnNumbers == true
+   #if nonfloatReturnNumbers == true //we want to see complete process inside #if
+   if (YatNewresolution==47){//it is bottom that we cant get data for.
 if (pix_x_is_it_odd==1 ){ReturnCache=(prebufferCache[pix_X] + prebufferCache[pix_X-1])>>1;}
-                                        else{ReturnCache=prebufferCache[pix_X];}//this is first and second line
+                         else{ReturnCache=prebufferCache[pix_X];}//this is first and second line
                         }//1st 2 lines are done here. 
  #endif                       
 else{//this is for rest of data
 if (XatNewresolution <1){ReturnCache=prebufferCache[pix_X];}//we have no date from left to get at zero or 1. so we make it the same data 
 else{//if we are here we are not at pixel edges
 #if nonfloatReturnNumbers != true
-if (pix_x_is_it_odd==0){
-if (pix_y_is_it_odd==1){ReturnCache=prebufferCache[pix_X];}
+if (pix_x_is_it_odd==1){
+if (pix_y_is_it_odd==0){ReturnCache=prebufferCache[pix_X];}
 else{ReturnCache=(prebufferCache[pix_X]+CurrentbufferCache[pix_X])*0.5;}
 }else{
-if (pix_y_is_it_odd==1){ReturnCache=(prebufferCache[pix_X] + prebufferCache[pix_X-1])*0.5;} 
+if (pix_y_is_it_odd==0){ReturnCache=(prebufferCache[pix_X] + prebufferCache[pix_X-1])*0.5;} 
 // belowe her is else of bufferlineNumber !=pix_Y. so below here we have cached data and we pull from it!
 else{ReturnCache=(prebufferCache[pix_X] + prebufferCache[pix_X-1]+CurrentbufferCache[pix_X] + CurrentbufferCache[pix_X-1])*0.25;} 
 } 
 #endif
 #if nonfloatReturnNumbers == true
-if (pix_x_is_it_odd==0){//for numbers being bit shifted we add 1 in case value is in bettween
-if ( pix_y_is_it_odd==1){ReturnCache=prebufferCache[pix_X];}
+if (pix_x_is_it_odd==1){//for numbers being bit shifted we add 1 in case value is in bettween
+if ( pix_y_is_it_odd==0){ReturnCache=prebufferCache[pix_X];}
 else{ReturnCache=(prebufferCache[pix_X]+CurrentbufferCache[pix_X]+1)>>1;}
 }else{
-if (pix_y_is_it_odd==1){ReturnCache=(prebufferCache[pix_X]+ prebufferCache[pix_X-1]+1)>>1;} 
+if (pix_y_is_it_odd==0){ReturnCache=(prebufferCache[pix_X]+ prebufferCache[pix_X-1]+1)>>1;} 
 // belowe her is else of bufferlineNumber !=pix_Y. so below here we have cached data and we pull from it!
 else{ReturnCache=(prebufferCache[pix_X] + prebufferCache[pix_X-1]+CurrentbufferCache[pix_X] + CurrentbufferCache[pix_X-1]+2)>>2;} 
 }
+
 #endif
 
 }//all data here can be interpolated
