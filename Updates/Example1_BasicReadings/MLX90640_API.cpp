@@ -28,7 +28,8 @@
 #include "pixelframemem.h"
 #include "pixelCache.h"
 #include "customMath.h";//this is some custom stuff to speed things up som values have been tablized and pre solved
-void ExtractVDDParameters( );//we are removing the need for this
+
+void ExtractVDDParameters( );
 void ExtractPTATParameters();
 void ExtractGainParameters();
 void ExtractTgcParameters();
@@ -62,7 +63,7 @@ return worddata[0];
 #endif
 #if customSmallCacheForMemReads ==true //we read only 2 bytes at a time with a lot of address overhead
 //here is predictive loading. if y is different, we do different things. if y is different, we determin if y is incremental or further away. if further away we cache 64 values
-uint8_t valueofy =(value>>6) ;//we are gettint the y line data /32
+uint8_t valueofy =(value>>6) ;//we are gettint the y line data /64
 if (linecache !=valueofy ){//this means we have a cache miss.
 //65408is 8bit //65408 is 7   6 bits wide65472 . 5bits wide is65504. this causes lower area to set itself to a mask
 MLX90640_I2CRead(MLX90640_address, 1024+(value&65472),64,SmallMemCache_i2c_efficency);
@@ -397,38 +398,32 @@ float ExtractKvPixelParametersRawPerPixel(uint16_t value )
 
 float MLX90640_CalculateToRawPerPixel(uint16_t pixelNumber )
 {//this ligher code requires footwork per pixel
-
+// time till her is *******90,000 ********** 
 if (pixelNumber == 0){//we only do this on start of page
     
     //sub_calc_subPage = mlx90640Frame[833];//we dont care about page data individuallly that much anymore
     sub_calc_vdd = MLX90640_GetVdd();
+    
     sub_calc_ta = MLX90640_GetTa();
 sub_calc_ta_MINUS_25=sub_calc_ta-25;//we cache this value. simple math but it is done 768 times or more
    //
-    
-    
     sub_calc_alphaCorrR[0] = 1 / (1 + ksTo[0] * 40);
     sub_calc_alphaCorrR[1] = 1 ;
     sub_calc_alphaCorrR[2] = (1 + ksTo[2] * ct[2]);
     sub_calc_alphaCorrR[3] = sub_calc_alphaCorrR[2] * (1 + ksTo[3] * (ct[3] - ct[2]));
-    
-//------------------------- Gain calculation -----------------------------------    
+    //------------------------- Gain calculation -----------------------------------    
     sub_calc_gain = mlx90640Frame[778-768];//we use a smaller cache of page data now
     if(sub_calc_gain > 32767)
     {
         sub_calc_gain = sub_calc_gain - 65536;
-    }
-    
+    }    
     sub_calc_gain = gainEE / sub_calc_gain; 
 
-//------------------------- To calculation -------------------------------------    
-  
+//------------------------- To calculation -------------------------------------     
     sub_calc_mode = (mlx90640Frame[832-768] & 0x1000) >> 5;
     sub_calc_irDataCP[0] = mlx90640Frame[776-768];  
     sub_calc_irDataCP[1] = mlx90640Frame[808-768];
-  
-
- 
+   
     for( int i = 0; i < 2; i++)
     {
 
@@ -451,15 +446,12 @@ float cachedForArea= (1 + cpKta * (sub_calc_ta_MINUS_25)) * (1 + cpKv * (sub_cal
     }
     //to here data is same for every pixel
 }//this is for one time per read check of data
+// to this point ******* 95,000 ******************* so 5000 microseconds
 
-   // for( int pixelNumber = 0; pixelNumber < 768; pixelNumber++)
-   // {
-
-   
         sub_calc_ilPattern = (pixelNumber >>5) - ((pixelNumber>>6) <<1); 
         sub_calc_chessPattern = sub_calc_ilPattern ^ (pixelNumber - ((pixelNumber>>1)<<1)); 
         sub_calc_conversionPattern = (((pixelNumber + 2) >>2) - ((pixelNumber + 3) >>2) + ((pixelNumber + 1) >>2) - (pixelNumber >>2)) * (1 - ( sub_calc_ilPattern<<1));
-       
+       //to here takes ******105,000********* so about 15,000 cycles total.
         if(sub_calc_mode == 0)
         {
           sub_calc_pattern = sub_calc_ilPattern; 
@@ -471,19 +463,19 @@ float cachedForArea= (1 + cpKta * (sub_calc_ta_MINUS_25)) * (1 + cpKv * (sub_cal
      
         if(sub_calc_pattern == sub_calc_pattern)// mlx90640Frame[833-768])//if frame matches current data group then process further
         {  
-          sub_calc_irData = RamGetStoredInLocal(pixelNumber) ;   //sub_calc_irData = mlx90640FrameCELLRAM[pixelNumber];768 reads of ram total 100000microseconds
+          sub_calc_irData =RamGetStoredInLocal(pixelNumber) ;   //sub_calc_irData = mlx90640FrameCELLRAM[pixelNumber];768 reads of ram total 100000microseconds
             if(sub_calc_irData > 32767)
             {
                 sub_calc_irData = sub_calc_irData - 65536;
             }
          
-     
+    // to here takes ******145,000 or funciton to this point takes 65,000
 
     //these values can be put into rom as well! modify math so the values from rom can be managed in rom!
          //   sub_calc_irData = sub_calc_irData * sub_calc_gain;//this is first slow down
              sub_calc_irData = sub_calc_irData* sub_calc_gain; //20,000us
 
-              // return 5;// math until this point is 354000
+
 #if NEW_METHOD ==false  //old way
             irData = irData - offset[pixelNumber]*(1 + kta[pixelNumber]*(ta - 25))*(1 + kv[pixelNumber]*(vdd - 3.3));
 #endif
@@ -493,7 +485,7 @@ float cachedForArea= (1 + cpKta * (sub_calc_ta_MINUS_25)) * (1 + cpKv * (sub_cal
            (1 + ExtractKvPixelParametersRawPerPixel(pixelNumber)*(sub_calc_vdd - 3.3));
 #endif
 
-            // math until this point is 603000 * we reduced it to 511000 350,000!
+            // to here it takes ******315000*********  micro seconds so it used 210000
 
  if (pixelNumber == 0){//we only do this on start of page 
     sub_calc_ta4 = SimplePow((sub_calc_ta + 273.15), (double)4);
@@ -501,7 +493,7 @@ float cachedForArea= (1 + cpKta * (sub_calc_ta_MINUS_25)) * (1 + cpKv * (sub_cal
     sub_calc_taTr = sub_calc_tr4 - (sub_calc_tr4-sub_calc_ta4)*emissivityInverted;
  //float sub_calc_taTrB=SimplePow((tr + 273.15),4)-    (SimplePow((sub_calc_ta + 273.15),4)*emissivityInverted);
  }
-
+// to this point only 316000 so total used is 211000 *****************************
             
             if(sub_calc_mode !=  calibrationModeEE)
             {
@@ -509,23 +501,22 @@ float cachedForArea= (1 + cpKta * (sub_calc_ta_MINUS_25)) * (1 + cpKv * (sub_cal
             }
          
             sub_calc_irData = sub_calc_irData *emissivityInverted;// in place of / emissivity;saves 20,000 microseconds over 768 reads
-            //to here 545000
+            
             sub_calc_irData = sub_calc_irData - tgc * sub_calc_irDataCP[sub_calc_subPage];
- 
-            float cachedForArea= 
+          // //******316000 to here. reason. tgc in most cases is 0.
+            
             #if NEW_METHOD != true 
             alphaCompensated = (alpha[pixelNumber] - tgc * cpAlpha[subPage])*(1 + KsTa * (sub_calc_ta_MINUS_25));
             #endif
             #if NEW_METHOD == true 
             sub_calc_alphaCompensated = (ExtractAlphaParametersRawPerPixel(pixelNumber) - tgc * cpAlpha[sub_calc_subPage])*(1 + KsTa * (sub_calc_ta_MINUS_25));    
             #endif
-
-            //return 5;// math until this point is 566000 400000
+            //*********370000 microseconds to here so loop takes 280000************* or 70,000 
+           
             sub_calc_Sx = SimplePow(sub_calc_alphaCompensated, 3) * (sub_calc_irData + sub_calc_alphaCompensated * sub_calc_taTr);
- 
-
             sub_calc_Sx = Q_rsqrt(sub_calc_Sx) ; 
             sub_calc_Sx =sub_calc_Sx  * ksTo[1];
+            //  *********370000 microseconds to here .. the above line is not processing for whatever reason
             //ref
             //sub_calc_To = Q_rsqrt(Q_rsqrt(sub_calc_irData/(sub_calc_alphaCompensated * (1 - ksTo[1] * 273.15) + sub_calc_Sx) + sub_calc_taTr)) - 273.15;
   /*
@@ -535,6 +526,37 @@ float cachedForArea= (1 + cpKta * (sub_calc_ta_MINUS_25)) * (1 + cpKv * (sub_cal
  float sub_calc_taTrB=SimplePow((tr + 273.15),4)-    (SimplePow((sub_calc_ta + 273.15),4)*emissivityInverted);
    */
   
+   #define newMathMethod true //if true we use new method
+//value stored in customMath.h   //float CachedValue[4]//this is the data cached
+                                 //float CachedREf[4]//this is the referernce so we know if value has changed or not
+   #if newMathMethod == true 
+            float temp;
+            sub_calc_To =sub_calc_irData;
+            if (sub_calc_alphaCompensated != 0){
+              float temp=  sub_calc_alphaCompensated;
+             temp=temp* (1 - ksTo[1]) ;
+              temp=temp * 273.15 ;
+            }else{temp=0;}//since is usually zero dont do the calc.
+             
+              temp=temp + sub_calc_Sx;//this value is needed
+            float   tempinv=1/temp;//we invert temp
+            sub_calc_To =sub_calc_To *tempinv;
+              
+              temp=temp + sub_calc_Sx;
+            sub_calc_To =sub_calc_To *tempinv;   // sub_calc_ta4 = SimplePow((sub_calc_ta + 273.15), (double)4);
+                //tr=Ta - TA_SHIFT   //  sub_calc_tr4 = SimplePow((tr + 273.15), (double)4);
+            
+                //below is this: sub_calc_taTr;//sub_calc_taTr = sub_calc_tr4 - (sub_calc_tr4-sub_calc_ta4)*emissivityInverted;
+            sub_calc_To =sub_calc_To + SimplePow(tr + 273.15, 4)- (SimplePow(tr + 273.15,4)-SimplePow(sub_calc_ta + 273.15,4))*emissivityInverted;      
+            
+            sub_calc_To = sub_calc_To -5566789756.3;//-74610.9225xx74610.9225=-5566789756.3
+            sub_calc_To =   Q_rsqrt(sub_calc_To);
+            // sub_calc_To = sub_calc_To  -74610.9225
+            sub_calc_To =Q_rsqrt(sub_calc_To);//-273.15x-273.15=-74610.9225
+            #else // below is old method
+
+
+            
             sub_calc_To =sub_calc_irData;
               float temp=  sub_calc_alphaCompensated;
              temp=temp* (1 - ksTo[1]) ;
@@ -549,7 +571,9 @@ float cachedForArea= (1 + cpKta * (sub_calc_ta_MINUS_25)) * (1 + cpKv * (sub_cal
             sub_calc_To =   Q_rsqrt(sub_calc_To);
             sub_calc_To =Q_rsqrt(sub_calc_To);
             sub_calc_To =sub_calc_To -273.15; 
-         
+            #endif
+//to this point *******640,000 *******
+//return sub_calc_To;
             if(sub_calc_To < ct[1])
             {
                 sub_calc_range = 0;
@@ -578,7 +602,7 @@ float cachedForArea= (1 + cpKta * (sub_calc_ta_MINUS_25)) * (1 + cpKv * (sub_cal
             sub_calc_To =    Q_rsqrt(sub_calc_To);
            sub_calc_To =Q_rsqrt(sub_calc_To);
            sub_calc_To =sub_calc_To - 273.15;
-           return sub_calc_To;//we return value to main loop rather than do each pixel (all together)
+           return sub_calc_To- TA_SHIFT;//we return value to main loop rather than do each pixel (all together)
         }
    // }
 }
@@ -1237,7 +1261,7 @@ void ExtractGainParameters()
 
 void ExtractTgcParameters( )
 {
-    float tgc;
+    //float tgc;
     tgc = eeDataGetStoredInLocalEPROM(60) & 0x00FF;
     if(tgc > 127)
     {
@@ -1613,8 +1637,10 @@ void ExtractCPParameters( )
     {
         alphaSP[0] = alphaSP[0] - 1024;
     }
-    alphaSP[0] = alphaSP[0] *SimplePowFast2sInverse(alphaScale);
     
+
+alphaSP[0] = alphaSP[0] *SimplePowFast2sInverse(alphaScale);
+
     alphaSP[1] = (eeDataGetStoredInLocalEPROM(57) & 0xFC00) >> 10;
     if (alphaSP[1] > 31)
     {
