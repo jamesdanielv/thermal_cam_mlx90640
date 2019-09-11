@@ -34,15 +34,14 @@
 #include <Wire.h>
 
 //here are the terminal output settings
-#define offset 0 // set this in whole numbers +/- to adjust sensor mid point for ascii serial output at zero the asci output is for 18-28 deg c. 
 #define pixelmodeTrueTestModeFalse true//true outputs display image of sorts to terminal, false outputs raw sensor data in deg C
-#define DoubleResolution false//this doubels resolution output to 64x48 to make seeing objects a little easier
+#define DoubleResolution true//this doubels resolution output to 64x48 to make seeing objects a little easier
 #define do_system_rom_verify_check true //this verifies that data is copied using, but can be anoying for several checks after rom dump is verified. if erorrs they should still show.
 #define hzMode 3//0=0.5hz,1=1hz,2=2hz,3=4hz,4=8hz,5=16hz,6=32hz,7=64hz 
 #define adSensorResolution 3 //0=16bit,it 1=17bit, 2=18bit, 3=19b
 #define MLX90640_mirror false //this flips direction of sensor in case used in camera mode
-#define troubleshoot_optimize true //if true frames show slower and output processing time per frame
-#define serialbuffermode true //this is to test a serial buffer
+#define troubleshoot_optimize false //if true frames show slower and output processing time per frame
+#define serialbuffermode true //this is to test a serial of 128 bytes
 #include "MLX90640_API.h"
 #include "MLX90640_I2C_Driver.h"
 #include "factoryCalData.h" //we use this to verify rom values
@@ -195,25 +194,24 @@ delaycount=micros();//we start timer for troubleshooting performance. normally t
 #endif
 
    #if serialbuffermode !=true
-   if (temp< 18+offset) {Serial.print(F(". "));}
-   if ((temp>17+offset) & (temp<21+offset)) {Serial.print(F(".-"));}
-   if ((temp>20+offset) & (temp<22+offset)) {Serial.print(F(".+"));}
-   if ((temp>21+offset) & (temp<23+offset)) {Serial.print(F(".X"));}
-   if ((temp>22+offset) & (temp<24+offset)) {Serial.print(F(".O"));}
-   if ((temp>23+offset) & (temp<25+offset)) {Serial.print(F(".0"));}
-   if ((temp>24+offset) & (temp<28+offset)) {Serial.print(F(".#"));} 
-   if (temp> 28+offset) {Serial.print(F(".@"));}
+   if (temp< 26) {Serial.print(F(". "));}
+   if ((temp>25) & (temp<29)) {Serial.print(F(".-"));}
+   if ((temp>28) & (temp<30)) {Serial.print(F(".+"));}
+   if ((temp>29) & (temp<31)) {Serial.print(F(".X"));}
+   if ((temp>30) & (temp<32)) {Serial.print(F(".O"));}
+   if ((temp>31) & (temp<33)) {Serial.print(F(".0"));}
+   if ((temp>32) & (temp<36)) {Serial.print(F(".#"));} 
+   if (temp> 35) {Serial.print(F(".@"));}
  
-   #else //this assumes everything is 8deg hotter
-   if (temp<18+offset){SerialBUffer[SBC]=32;SBC++;}
-   if ((temp>17+offset) & (temp<21+offset)){SerialBUffer[SBC]=45;SBC++;}
-   if ((temp>20+offset) & (temp<22+offset)){SerialBUffer[SBC]=43;SBC++;}
-   if ((temp>21+offset) & (temp<23+offset)){SerialBUffer[SBC]=88;SBC++;}
-   if ((temp>22+offset) & (temp<24+offset)){SerialBUffer[SBC]=79;SBC++;}
-   if ((temp>23+offset) & (temp<25+offset)){SerialBUffer[SBC]=48;SBC++;}
-   if ((temp>24+offset) & (temp<28+offset)){SerialBUffer[SBC]=35;SBC++;}
-   if (temp>28+offset){SerialBUffer[SBC]=64;SBC++;}
-   
+   #else
+   if (temp<26){SerialBUffer[SBC]=32;SBC++;}
+   if ((temp>25) & (temp<29)){SerialBUffer[SBC]=45;SBC++;}
+   if ((temp>28) & (temp<30)){SerialBUffer[SBC]=43;SBC++;}
+   if ((temp>29) & (temp<31)){SerialBUffer[SBC]=88;SBC++;}
+   if ((temp>30) & (temp<32)){SerialBUffer[SBC]=79;SBC++;}
+   if ((temp>31) & (temp<33)){SerialBUffer[SBC]=48;SBC++;}
+   if ((temp>32) & (temp<36)){SerialBUffer[SBC]=35;SBC++;}
+   if (temp>35){SerialBUffer[SBC]=64;SBC++;}
    #endif
     //Serial.print("C");
    // Serial.println();
@@ -235,15 +233,10 @@ delaycount=micros();//we start timer for troubleshooting performance. normally t
   
  Serial.println();
 #else
+
 while (SBC !=0){//while instead of for loop has shorter jmp routine
-  Serial.write(46);//this is '.'
-
-#if DoubleResolution !=true 
-Serial.write(SerialBUffer[32-SBC]);
-
-#else
+Serial.write(46);
 Serial.write(SerialBUffer[64-SBC]);
-#endif
 SBC--;//we get it in a while loop and return it at zero!
 }
 
@@ -263,11 +256,7 @@ Serial.print("alphaScale:");Serial.println(alphaScale_testing_results());
 Serial.print("kvScale:");Serial.println(kvScale_testing_results());
 Serial.print("ktaScale1:");Serial.println(ktaScale1_testing_results());
 Serial.print("gain:");Serial.println(gainEE_testing_results());
-#if DoubleResolution  !=  true
-Serial.print("center_pixelTemp=");Serial.println(Readmlx90640To(16+12*32));//8 is ta_shift this is normally calulated before data is returned.
-#else
-Serial.print("center_pixelTemp=");Serial.println(DoubleResolutionValue(24,32));//8 is ta_shift
-#endif
+Serial.print("last_pixelTemp=");Serial.println(DoubleResolutionValue(48,63));
 #endif
 }
 
