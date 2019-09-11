@@ -159,7 +159,7 @@ float Q_rsqrt( float number ) //a good enough square root method. if not enabled
   y  = * ( float * ) &i;
   y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
   //y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
-  return y;
+  return 1/y;//we hate to use div.. this is slower than the bult in method..
 
   #else 
 
