@@ -1,3 +1,5 @@
+update is coming soon, just testing serial compression, and trying new math improvements in To cacl. if i can i will include math improvements as well. still need to finish testing on teensy3.1/3.2 and teensy-lc for compatability. it also works on uno and nano. i will update soon. 9/13/19...... well almost that date. lol
+
 code in this folder will start to require the file factoryCalData.h, you will want to run a program included in folder called 
 'getEEpromDump' extract it and with sensor functional pull out the data from the thermal sensor. this data needs to be cut and past from serial output and put in brackets of factoryCalData.h
 
