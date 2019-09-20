@@ -42,6 +42,7 @@ be sure to look at and use code in /updates folder for latest builds
 
 
 i get a lot of data errors at start up.
-you will need to run files in getEEpromDump.zip to extract the rom values from the sensor. at start the device checks that its progmem data in flash matches the data in sensor
+you will need to run files in getEEpromDump.zip to extract the rom values from the sensor. at start the device 
+checks that its progmem data in flash matches the data in sensor
 
 
