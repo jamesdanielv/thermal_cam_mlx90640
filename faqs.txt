@@ -10,7 +10,11 @@ there might still be math calc differences. however single point is +/-
 
 Do i need pull up resistors for project?
 
-Yes you do. i would recommend between 1.3k and 2.2k for best performance
+Yes you do. if your board does not have them built in.
+i would recommend between 1.3k and 2.2k for best performance
+and i would recommend that you purchase a sensor with resistors on the board
+such as sparkfuns mlx90640 sensors because parts on a breadboard or other circuit 
+will have a lot of capacitance that will limit speed 
 
 Can i use built in pull up resistors?
 
