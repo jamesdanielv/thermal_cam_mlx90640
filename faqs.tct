@@ -1,0 +1,27 @@
+F.A.Q.'s (frequently Asked Questions)
+
+does this code work on normal arduino uno, nano, mega?
+
+Yes. this version does.
+ however it is still experimental because of single point float precision.
+there might still be math calc differences. however single point is +/- 
+0.00000011920929 2^X
+
+
+Do i need pull up resistors for project?
+
+Yes you do. i would recommend between 1.3k and 2.2k for best performance
+
+Can i use built in pull up resistors?
+
+I would not recomment it since they are ~22k. since this code requires writing data as well as reading it there could be corruption of device if resistor values are too high
+if you want to risk it set the clock rate for i2c wire to 50000
+
+whats the fasted sample rate that the sensor will do?
+
+the fastest sample rate i have tested is 32hz mode. but this is rate of sensor date update the rate of reading the sensor is between 2-4 fps currently
+
+Why when i plug sensor in does it not work?
+it could be because of backwards wiring of i2c lines,
+or your usb cable or uno device are out of spec. 
+many devices on usb data bus are under 100ma. with the mlx90640 drawing current and the regulation to support it as well as the arduino cpu device drawing power from cpu processing it can peek at up to 200ma. if the usb cable is not in spec it more than likely wont have enough current to power i2c properly. to be sure get a thick usb cable used for printers as these cables are usually in spec to push usb data as fast as possible.
