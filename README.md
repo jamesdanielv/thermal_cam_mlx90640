@@ -1,16 +1,28 @@
 # thermal_cam_mlx90640
 there is a file mlx90640_st77xx.zip that has support for lcd output. 
+
 st77xx 128x128 display. at this time this is the only display supported. it outputs about 2 fps at 64x48 resolution scalled to 128x96. more fps will be possible possibly later
+
 if you want a little more speed Z_MemManagment change Replace_detailed_calc_with_image_data false to true
 the display will start out saturated but sensor will adjust within a few seconds.
+
 st77xx vin arudino 5v pin
+
 st77xx gnd arudino gng pin
+
 st77xx clk arudino 13 pin
+
 st77xx miso arudino 12 pin
+
 st77xx mosi arudino 11 pin
+
 st77xx CS arudino 10 pin
+
 st77xx rst arudino 9 pin
+
 st77xx d/c arudino 8 pin
+
+
 
 sensor mlx90640
 mlx90640 3v to 3v st77xx pin
