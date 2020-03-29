@@ -25,9 +25,13 @@ st77xx d/c arudino 8 pin
 
 
 sensor mlx90640
+
 mlx90640 3v to 3v st77xx pin
+
 mlx90640 gnd to gnd arduino pin
+
 mlx90640 SDA to 4 pin arduino
+
 mlx90640 SLC to 5 pin arduino
 
 
