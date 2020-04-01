@@ -1,5 +1,5 @@
 # thermal_cam_mlx90640
-there is a file mlx90640_st77xx.zip that has support for lcd output. 
+there is a file mlx90640_st77xx.zip that has support for lcd output. the next update will have increased performance, and a color table. i think the current implimented version needs to be improved
 
 st77xx 128x128 display. at this time this is the only display supported. it outputs about 2 fps at 64x48 resolution scalled to 128x96. more fps will be possible possibly later
 
